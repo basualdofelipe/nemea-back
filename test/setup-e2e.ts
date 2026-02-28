@@ -10,3 +10,4 @@ process.env.DATABASE_URL =
   process.env.DATABASE_URL_TEST ??
   'postgresql://nemea:nemea_test@localhost:5433/nemea_test';
 process.env.NODE_ENV = 'test';
+process.env.FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:3000';
