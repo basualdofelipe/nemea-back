@@ -5,7 +5,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UsersService } from '../../users/users.service';
 
 export interface JwtPayload {
-  sub: number;
+  sub: string;
   email: string;
   role: string;
 }
@@ -25,7 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(
     payload: JwtPayload,
-  ): Promise<{ id: number; email: string; role: string }> {
+  ): Promise<{ id: string; email: string; role: string }> {
     const user = await this.usersService.findActiveByEmail(payload.email);
 
     if (!user) {

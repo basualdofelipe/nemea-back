@@ -4,8 +4,10 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
+import { CatalogsModule } from './catalogs/catalogs.module';
 import { envValidationSchema } from './config/env.validation';
 import { typeOrmConfig } from './config/typeorm.config';
+import { SuppliersModule } from './suppliers/suppliers.module';
 import { UsersModule } from './users/users.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -23,6 +25,8 @@ import { AppService } from './app.service';
     TypeOrmModule.forRoot(typeOrmConfig),
     AuthModule,
     UsersModule,
+    CatalogsModule,
+    SuppliersModule,
   ],
   controllers: [AppController],
   providers: [

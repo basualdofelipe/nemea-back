@@ -10,7 +10,7 @@ describe('UsersController', () => {
   let usersService: UsersService;
 
   const mockUser: Partial<User> = {
-    id: 1,
+    id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     email: 'admin@nemea.com',
     name: 'Admin Nemea',
     pictureUrl: null,
@@ -59,7 +59,11 @@ describe('UsersController', () => {
   describe('POST /users', () => {
     it('should create a user with email and role', async () => {
       const dto = { email: 'new@nemea.com', role: Role.USER };
-      const createdUser = { ...mockUser, ...dto, id: 2 };
+      const createdUser = {
+        ...mockUser,
+        ...dto,
+        id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+      };
       mockUsersService.findByEmail.mockResolvedValue(null);
       mockUsersService.create.mockResolvedValue(createdUser);
 
@@ -83,9 +87,11 @@ describe('UsersController', () => {
     it('should remove a user by id', async () => {
       mockUsersService.remove.mockResolvedValue(undefined);
 
-      await controller.remove(1);
+      await controller.remove('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
 
-      expect(usersService.remove).toHaveBeenCalledWith(1);
+      expect(usersService.remove).toHaveBeenCalledWith(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      );
     });
   });
 });

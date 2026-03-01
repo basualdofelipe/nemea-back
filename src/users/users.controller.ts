@@ -5,7 +5,7 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
+  ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
 import {
@@ -56,7 +56,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Remove a user from the whitelist (ADMIN only)' })
   @ApiResponse({ status: 200, description: 'User removed successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })
-  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
+  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.usersService.remove(id);
   }
 }
