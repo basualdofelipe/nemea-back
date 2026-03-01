@@ -47,6 +47,7 @@ async function bootstrap(): Promise<void> {
       .setTitle('Nemea API')
       .setDescription('Nemea leather goods cost management API')
       .setVersion('0.1.0')
+      .addBearerAuth()
       .build();
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('api/docs', app, document);

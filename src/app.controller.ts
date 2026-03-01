@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Public } from './auth/decorators/public.decorator';
 
 interface HealthResponse {
   status: string;
@@ -12,6 +13,7 @@ interface HealthResponse {
 @Controller()
 export class AppController {
   @Get('health')
+  @Public()
   @ApiOperation({ summary: 'Health check endpoint' })
   @ApiResponse({
     status: 200,
