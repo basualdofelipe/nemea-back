@@ -129,12 +129,13 @@ describe('AppController (e2e)', () => {
       expect(response.body).toHaveProperty('statusCode', 400);
     });
 
-    it('unknown route should return 401 (global guard runs first)', async () => {
+    it('unknown route should return 404 with correct error format', async () => {
       const response = await request(app.getHttpServer())
         .get('/api/nonexistent')
-        .expect(401);
+        .expect(404);
 
-      expect(response.body).toHaveProperty('statusCode', 401);
+      expect(response.body).toHaveProperty('statusCode', 404);
+      expect(response.body).toHaveProperty('timestamp');
     });
   });
 });
