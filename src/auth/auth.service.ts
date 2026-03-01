@@ -58,7 +58,7 @@ export class AuthService {
     };
   }
 
-  async getProfile(userId: number): Promise<User | null> {
+  async getProfile(userId: string): Promise<User | null> {
     return this.usersService.findById(userId);
   }
 

@@ -10,7 +10,7 @@ describe('UsersService', () => {
   let repository: Repository<User>;
 
   const mockUser: Partial<User> = {
-    id: 1,
+    id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     email: 'admin@nemea.com',
     name: 'Admin Nemea',
     pictureUrl: null,
@@ -86,7 +86,11 @@ describe('UsersService', () => {
   describe('create', () => {
     it('should create a user and return it', async () => {
       const dto = { email: 'new@user.com', role: Role.USER, name: 'New User' };
-      const createdUser = { ...mockUser, ...dto, id: 2 };
+      const createdUser = {
+        ...mockUser,
+        ...dto,
+        id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+      };
       mockRepository.create.mockReturnValue(createdUser);
       mockRepository.save.mockResolvedValue(createdUser);
 
@@ -114,16 +118,22 @@ describe('UsersService', () => {
     it('should return a user by id', async () => {
       mockRepository.findOne.mockResolvedValue(mockUser);
 
-      const result = await service.findById(1);
+      const result = await service.findById(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      );
 
       expect(result).toEqual(mockUser);
-      expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' },
+      });
     });
 
     it('should return null for nonexistent id', async () => {
       mockRepository.findOne.mockResolvedValue(null);
 
-      const result = await service.findById(999);
+      const result = await service.findById(
+        'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+      );
 
       expect(result).toBeNull();
     });
@@ -133,9 +143,12 @@ describe('UsersService', () => {
     it('should set is_active to false', async () => {
       mockRepository.update.mockResolvedValue({ affected: 1 });
 
-      await service.deactivate(1);
+      await service.deactivate('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
 
-      expect(repository.update).toHaveBeenCalledWith(1, { isActive: false });
+      expect(repository.update).toHaveBeenCalledWith(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        { isActive: false },
+      );
     });
   });
 
@@ -143,9 +156,12 @@ describe('UsersService', () => {
     it('should set is_active to true', async () => {
       mockRepository.update.mockResolvedValue({ affected: 1 });
 
-      await service.activate(1);
+      await service.activate('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
 
-      expect(repository.update).toHaveBeenCalledWith(1, { isActive: true });
+      expect(repository.update).toHaveBeenCalledWith(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        { isActive: true },
+      );
     });
   });
 
@@ -153,17 +169,23 @@ describe('UsersService', () => {
     it('should update google profile data', async () => {
       mockRepository.update.mockResolvedValue({ affected: 1 });
 
-      await service.updateGoogleProfile(1, {
-        name: 'Google Name',
-        pictureUrl: 'https://example.com/pic.jpg',
-        googleId: '123456',
-      });
+      await service.updateGoogleProfile(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        {
+          name: 'Google Name',
+          pictureUrl: 'https://example.com/pic.jpg',
+          googleId: '123456',
+        },
+      );
 
-      expect(repository.update).toHaveBeenCalledWith(1, {
-        name: 'Google Name',
-        pictureUrl: 'https://example.com/pic.jpg',
-        googleId: '123456',
-      });
+      expect(repository.update).toHaveBeenCalledWith(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        {
+          name: 'Google Name',
+          pictureUrl: 'https://example.com/pic.jpg',
+          googleId: '123456',
+        },
+      );
     });
   });
 
@@ -171,9 +193,11 @@ describe('UsersService', () => {
     it('should hard delete a user', async () => {
       mockRepository.delete.mockResolvedValue({ affected: 1 });
 
-      await service.remove(1);
+      await service.remove('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
 
-      expect(repository.delete).toHaveBeenCalledWith(1);
+      expect(repository.delete).toHaveBeenCalledWith(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      );
     });
   });
 });

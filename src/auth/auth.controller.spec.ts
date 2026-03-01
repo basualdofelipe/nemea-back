@@ -15,7 +15,7 @@ describe('AuthController', () => {
   const mockAuthResponse: AuthResponseDto = {
     accessToken: 'mocked-jwt-token',
     user: {
-      id: 1,
+      id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
       email: 'admin@nemea.com',
       role: Role.ADMIN,
       name: 'Admin Nemea',
@@ -24,7 +24,7 @@ describe('AuthController', () => {
   };
 
   const mockUser: Partial<User> = {
-    id: 1,
+    id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     email: 'admin@nemea.com',
     name: 'Admin Nemea',
     pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
@@ -93,7 +93,7 @@ describe('AuthController', () => {
   describe('GET /auth/me', () => {
     it('should return user profile for authenticated user', async () => {
       const jwtUser: JwtUser = {
-        id: 1,
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
         email: 'admin@nemea.com',
         role: Role.ADMIN,
       };
@@ -102,12 +102,14 @@ describe('AuthController', () => {
       const result = await controller.getProfile(jwtUser);
 
       expect(result).toEqual(mockUser);
-      expect(authService.getProfile).toHaveBeenCalledWith(1);
+      expect(authService.getProfile).toHaveBeenCalledWith(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      );
     });
 
     it('should throw UnauthorizedException when user not found in DB', async () => {
       const jwtUser: JwtUser = {
-        id: 999,
+        id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
         email: 'deleted@nemea.com',
         role: Role.USER,
       };

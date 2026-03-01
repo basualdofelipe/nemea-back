@@ -27,7 +27,7 @@ export class UsersService {
     return this.usersRepository.find();
   }
 
-  async findById(id: number): Promise<User | null> {
+  async findById(id: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { id },
     });
@@ -39,7 +39,7 @@ export class UsersService {
   }
 
   async updateGoogleProfile(
-    id: number,
+    id: string,
     data: { name: string | null; pictureUrl: string | null; googleId: string },
   ): Promise<void> {
     await this.usersRepository.update(id, {
@@ -49,15 +49,15 @@ export class UsersService {
     });
   }
 
-  async deactivate(id: number): Promise<void> {
+  async deactivate(id: string): Promise<void> {
     await this.usersRepository.update(id, { isActive: false });
   }
 
-  async activate(id: number): Promise<void> {
+  async activate(id: string): Promise<void> {
     await this.usersRepository.update(id, { isActive: true });
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     await this.usersRepository.delete(id);
   }
 }

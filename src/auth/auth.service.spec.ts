@@ -13,7 +13,7 @@ describe('AuthService', () => {
   let jwtService: JwtService;
 
   const mockUser: Partial<User> = {
-    id: 1,
+    id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     email: 'admin@nemea.com',
     name: 'Admin Nemea',
     pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
@@ -84,7 +84,7 @@ describe('AuthService', () => {
       );
 
       expect(result.accessToken).toBe('mocked-jwt-token');
-      expect(result.user.id).toBe(1);
+      expect(result.user.id).toBe('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
       expect(result.user.email).toBe('admin@nemea.com');
       expect(result.user.role).toBe(Role.ADMIN);
       expect(result.user.name).toBe('Admin Nemea');
@@ -95,13 +95,16 @@ describe('AuthService', () => {
       expect(usersService.findActiveByEmail).toHaveBeenCalledWith(
         'admin@nemea.com',
       );
-      expect(usersService.updateGoogleProfile).toHaveBeenCalledWith(1, {
-        name: 'Admin Nemea',
-        pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
-        googleId: 'google-sub-123',
-      });
+      expect(usersService.updateGoogleProfile).toHaveBeenCalledWith(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        {
+          name: 'Admin Nemea',
+          pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
+          googleId: 'google-sub-123',
+        },
+      );
       expect(jwtService.sign).toHaveBeenCalledWith({
-        sub: 1,
+        sub: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
         email: 'admin@nemea.com',
         role: Role.ADMIN,
       });
@@ -129,7 +132,7 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException for invalid Google token', async () => {
       jest
         .spyOn(service as never, 'verifyGoogleIdToken' as never)
-        .mockRejectedValue(new Error('Invalid token'));
+        .mockRejectedValue(new Error('Invalid token') as never);
 
       await expect(
         service.validateGoogleToken('invalid-token'),
@@ -158,16 +161,22 @@ describe('AuthService', () => {
     it('should return a user by id', async () => {
       mockUsersService.findById.mockResolvedValue(mockUser);
 
-      const result = await service.getProfile(1);
+      const result = await service.getProfile(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      );
 
       expect(result).toEqual(mockUser);
-      expect(usersService.findById).toHaveBeenCalledWith(1);
+      expect(usersService.findById).toHaveBeenCalledWith(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      );
     });
 
     it('should return null for nonexistent user', async () => {
       mockUsersService.findById.mockResolvedValue(null);
 
-      const result = await service.getProfile(999);
+      const result = await service.getProfile(
+        'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+      );
 
       expect(result).toBeNull();
     });
