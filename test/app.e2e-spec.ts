@@ -42,7 +42,7 @@ describe('AppController (e2e)', () => {
   });
 
   describe('GET /api/health', () => {
-    it('should return 200 with health status', async () => {
+    it('should return 200 with health status (public route)', async () => {
       const response = await request(app.getHttpServer())
         .get('/api/health')
         .expect(200);
@@ -77,20 +77,64 @@ describe('AppController (e2e)', () => {
     });
   });
 
-  describe('Error handling', () => {
-    it('should return 404 with correct error format for unknown routes', async () => {
+  describe('Auth guard behavior', () => {
+    it('GET /api/auth/me should return 401 without JWT', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/auth/me')
+        .expect(401);
+
+      expect(response.body).toHaveProperty('statusCode', 401);
+    });
+
+    it('GET /api/auth/me with invalid JWT should return 401', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/auth/me')
+        .set('Authorization', 'Bearer invalid-token')
+        .expect(401);
+
+      expect(response.body).toHaveProperty('statusCode', 401);
+    });
+
+    it('GET /api/users should return 401 without JWT', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/users')
+        .expect(401);
+
+      expect(response.body).toHaveProperty('statusCode', 401);
+    });
+
+    it('POST /api/users should return 401 without JWT', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/users')
+        .send({ email: 'test@nemea.com' })
+        .expect(401);
+
+      expect(response.body).toHaveProperty('statusCode', 401);
+    });
+
+    it('DELETE /api/users/1 should return 401 without JWT', async () => {
+      const response = await request(app.getHttpServer())
+        .delete('/api/users/1')
+        .expect(401);
+
+      expect(response.body).toHaveProperty('statusCode', 401);
+    });
+
+    it('POST /api/auth/google without body should return 400 (ValidationPipe)', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/auth/google')
+        .send({})
+        .expect(400);
+
+      expect(response.body).toHaveProperty('statusCode', 400);
+    });
+
+    it('unknown route should return 401 (global guard runs first)', async () => {
       const response = await request(app.getHttpServer())
         .get('/api/nonexistent')
-        .expect(404);
+        .expect(401);
 
-      expect(response.body).toEqual(
-        expect.objectContaining({
-          statusCode: 404,
-          error: expect.any(String),
-          message: expect.any(String),
-          timestamp: expect.any(String),
-        }),
-      );
+      expect(response.body).toHaveProperty('statusCode', 401);
     });
   });
 });
