@@ -211,6 +211,13 @@ export class SuppliesService {
       throw new NotFoundException('Insumo no encontrado');
     }
 
+    // Block reactivation if supplier is inactive
+    if (!supply.isActive && !supply.supplier.isActive) {
+      throw new ConflictException(
+        'No se puede activar un insumo cuyo proveedor esta inactivo',
+      );
+    }
+
     supply.isActive = !supply.isActive;
     return this.supplyRepo.save(supply);
   }
