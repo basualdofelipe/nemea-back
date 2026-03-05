@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
+import { Supply } from '../supplies/entities/supply.entity';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { Supplier } from './entities/supplier.entity';
@@ -14,6 +15,8 @@ export class SuppliersService {
   constructor(
     @InjectRepository(Supplier)
     private readonly supplierRepo: Repository<Supplier>,
+    @InjectRepository(Supply)
+    private readonly supplyRepo: Repository<Supply>,
   ) {}
 
   async findAll(): Promise<Supplier[]> {
@@ -76,7 +79,18 @@ export class SuppliersService {
   async toggleStatus(id: string): Promise<Supplier> {
     const supplier = await this.findOne(id);
     supplier.isActive = !supplier.isActive;
-    return this.supplierRepo.save(supplier);
+    const savedSupplier = await this.supplierRepo.save(supplier);
+
+    // Cascade deactivation: when deactivating a supplier, deactivate all its active supplies
+    // Reactivating a supplier does NOT reactivate its supplies (locked decision)
+    if (!savedSupplier.isActive) {
+      await this.supplyRepo.update(
+        { supplier: { id }, isActive: true },
+        { isActive: false },
+      );
+    }
+
+    return savedSupplier;
   }
 
   async remove(id: string): Promise<void> {
