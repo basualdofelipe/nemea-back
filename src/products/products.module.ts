@@ -9,11 +9,13 @@ import { ProductFinish } from '../catalogs/entities/product-finish.entity';
 import { ProductColor } from '../catalogs/entities/product-color.entity';
 import { ProductSize } from '../catalogs/entities/product-size.entity';
 import { Supply } from '../supplies/entities/supply.entity';
+import { CostsModule } from '../costs/costs.module';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 
 @Module({
   imports: [
+    CostsModule,
     TypeOrmModule.forFeature([
       Product,
       SuppliesPerProductHistory,

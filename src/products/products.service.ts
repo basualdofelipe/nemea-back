@@ -112,6 +112,25 @@ export class ProductsService {
     return product;
   }
 
+  async findOneWithPrice(id: string): Promise<ProductWithPrice> {
+    const product = await this.findOne(id);
+
+    const latestPrice: { price: string; created_at: Date }[] =
+      await this.priceHistoryRepo.query(
+        `SELECT price, created_at
+         FROM product_price_history
+         WHERE product_id = $1
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [id],
+      );
+
+    return Object.assign(product, {
+      currentPrice: latestPrice[0]?.price ?? null,
+      lastPriceUpdate: latestPrice[0]?.created_at ?? null,
+    });
+  }
+
   async create(dto: CreateProductDto): Promise<Product> {
     const { type, name, finish, color, size } = await this.loadDimensions(dto);
 
