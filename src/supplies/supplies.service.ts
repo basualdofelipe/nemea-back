@@ -12,6 +12,7 @@ import { Supply } from './entities/supply.entity';
 import { SupplyPriceHistory } from './entities/supply-price-history.entity';
 import { SupplyType } from '../catalogs/entities/supply-type.entity';
 import { Supplier } from '../suppliers/entities/supplier.entity';
+import { SuppliesPerProductHistory } from '../products/entities/supplies-per-product-history.entity';
 
 export interface SupplyWithPrice extends Supply {
   currentPrice: string | null;
@@ -29,6 +30,8 @@ export class SuppliesService {
     private readonly supplyTypeRepo: Repository<SupplyType>,
     @InjectRepository(Supplier)
     private readonly supplierRepo: Repository<Supplier>,
+    @InjectRepository(SuppliesPerProductHistory)
+    private readonly bomRepo: Repository<SuppliesPerProductHistory>,
     private readonly entityManager: EntityManager,
   ) {}
 
@@ -216,6 +219,18 @@ export class SuppliesService {
       throw new ConflictException(
         'No se puede activar un insumo cuyo proveedor esta inactivo',
       );
+    }
+
+    // Block deactivation if supply is in any active BOM
+    if (supply.isActive) {
+      const bomUsage = await this.bomRepo.count({
+        where: { supply: { id }, isActive: true },
+      });
+      if (bomUsage > 0) {
+        throw new ConflictException(
+          `Este insumo esta en uso por ${bomUsage} producto(s). Elimina el insumo de todos los BOM antes de desactivarlo.`,
+        );
+      }
     }
 
     supply.isActive = !supply.isActive;

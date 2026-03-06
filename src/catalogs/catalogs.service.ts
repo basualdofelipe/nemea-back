@@ -30,6 +30,14 @@ export type CatalogDimension = (typeof VALID_DIMENSIONS)[number];
 
 @Injectable()
 export class CatalogsService {
+  private readonly DIMENSIONS_WITH_SKU: ReadonlySet<string> = new Set([
+    'product-types',
+    'product-names',
+    'product-finishes',
+    'product-colors',
+    'product-sizes',
+  ]);
+
   private readonly dimensionMap: Record<
     CatalogDimension,
     Repository<CatalogEntity>
@@ -102,6 +110,14 @@ export class CatalogsService {
     const repo = this.getRepository(dimension);
 
     try {
+      if (this.DIMENSIONS_WITH_SKU.has(dimension) && dto.skuCode == null) {
+        const result = await repo
+          .createQueryBuilder('item')
+          .select('COALESCE(MAX(item.skuCode), 0)', 'maxCode')
+          .getRawOne();
+        dto.skuCode = (parseInt(result.maxCode, 10) || 0) + 1;
+      }
+
       const item = repo.create(dto);
       return await repo.save(item);
     } catch (error) {

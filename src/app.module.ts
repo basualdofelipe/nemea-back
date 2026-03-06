@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { CatalogsModule } from './catalogs/catalogs.module';
 import { envValidationSchema } from './config/env.validation';
 import { typeOrmConfig } from './config/typeorm.config';
+import { ProductsModule } from './products/products.module';
 import { SuppliesModule } from './supplies/supplies.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { UsersModule } from './users/users.module';
@@ -29,6 +30,7 @@ import { AppService } from './app.service';
     CatalogsModule,
     SuppliersModule,
     SuppliesModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [

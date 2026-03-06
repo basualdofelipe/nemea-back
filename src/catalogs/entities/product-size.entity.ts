@@ -5,4 +5,7 @@ import { BaseEntity } from '../../common/entities/base.entity';
 export class ProductSize extends BaseEntity {
   @Column({ type: 'varchar', length: 100, unique: true })
   name!: string;
+
+  @Column({ name: 'sku_code', type: 'smallint', unique: true })
+  skuCode!: number;
 }
