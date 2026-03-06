@@ -19,7 +19,7 @@ export class AddSkuCodeToCatalogs1772500000000 implements MigrationInterface {
       );
     }
 
-    // Seed sku_code values for existing catalog items
+    // Seed sku_code values for known catalog items (from phase 3 seed)
     // product_types: Billetera=1, Cinturon=2, Deskpad=3, Porta Notebook=4, Mochila=5
     await queryRunner.query(`
       UPDATE "product_types" SET "sku_code" = CASE "name"
@@ -82,6 +82,25 @@ export class AddSkuCodeToCatalogs1772500000000 implements MigrationInterface {
       END
       WHERE "name" IN ('Unico', 'Chico', 'Mediano', 'Grande')
     `);
+
+    // Assign sku_codes to any remaining rows (user-created catalog items)
+    // Uses ROW_NUMBER to continue from the max existing sku_code per table
+    for (const table of tables) {
+      // product_sizes uses 0-based (Unico=0), others use 1-based
+      await queryRunner.query(`
+        UPDATE "${table}" t
+        SET "sku_code" = sub.new_code
+        FROM (
+          SELECT id,
+            ROW_NUMBER() OVER (ORDER BY "created_at", "name") +
+            COALESCE((SELECT MAX("sku_code") FROM "${table}" WHERE "sku_code" IS NOT NULL), 0)
+            AS new_code
+          FROM "${table}"
+          WHERE "sku_code" IS NULL
+        ) sub
+        WHERE t.id = sub.id
+      `);
+    }
 
     // Make sku_code NOT NULL and add UNIQUE constraint
     for (const table of tables) {
