@@ -26,16 +26,21 @@ import { UpdateBomDto } from './dto/update-bom.dto';
 import { BatchBomDto } from './dto/batch-bom.dto';
 import { CreateProductPriceDto } from './dto/create-product-price.dto';
 import { BatchProductPriceDto } from './dto/batch-product-price.dto';
+import { CostsService } from '../costs/costs.service';
+import { ProductWithCost } from '../costs/dto/product-with-cost.dto';
 import { Product } from './entities/product.entity';
 import { SuppliesPerProductHistory } from './entities/supplies-per-product-history.entity';
 import { ProductPriceHistory } from './entities/product-price-history.entity';
-import { ProductsService, ProductWithPrice } from './products.service';
+import { ProductsService } from './products.service';
 
 @ApiTags('Products')
 @ApiBearerAuth()
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly costsService: CostsService,
+  ) {}
 
   // ─── List / Batch Routes (BEFORE :id to avoid param conflicts) ─
 
@@ -51,8 +56,20 @@ export class ProductsController {
   async findAll(
     @Query('includeInactive', new ParseBoolPipe({ optional: true }))
     includeInactive?: boolean,
-  ): Promise<ProductWithPrice[]> {
-    return this.productsService.findAll(includeInactive ?? false);
+  ): Promise<ProductWithCost[]> {
+    const products = await this.productsService.findAll(
+      includeInactive ?? false,
+    );
+    const costMap = await this.costsService.calculateAll();
+
+    return products.map((product) => {
+      const costData = costMap.get(product.id);
+      return Object.assign(product, {
+        cost: costData?.cost ?? null,
+        costBreakdown: null,
+        costWarnings: costData?.costWarnings ?? [],
+      });
+    });
   }
 
   @Post()
@@ -143,11 +160,23 @@ export class ProductsController {
   // ─── :id Routes ────────────────────────────────────────────────
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener un producto por ID' })
-  @ApiResponse({ status: 200, description: 'Producto encontrado' })
+  @ApiOperation({ summary: 'Obtener un producto por ID con costo y desglose' })
+  @ApiResponse({
+    status: 200,
+    description: 'Producto encontrado con datos de costo',
+  })
   @ApiResponse({ status: 404, description: 'Producto no encontrado' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Product> {
-    return this.productsService.findOne(id);
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ProductWithCost> {
+    const product = await this.productsService.findOneWithPrice(id);
+    const costData = await this.costsService.calculateForProduct(id);
+
+    return Object.assign(product, {
+      cost: costData?.cost ?? null,
+      costBreakdown: costData?.costBreakdown ?? null,
+      costWarnings: costData?.costWarnings ?? [],
+    });
   }
 
   @Put(':id')
