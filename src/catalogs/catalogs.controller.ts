@@ -28,6 +28,7 @@ const DIMENSION_ENUM = [
   'product-colors',
   'product-sizes',
   'supply-types',
+  'expense-categories',
 ];
 
 @ApiTags('catalogs')
