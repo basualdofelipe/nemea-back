@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { CatalogsModule } from './catalogs/catalogs.module';
 import { CostsModule } from './costs/costs.module';
+import { ExpensesModule } from './expenses/expenses.module';
 import { envValidationSchema } from './config/env.validation';
 import { typeOrmConfig } from './config/typeorm.config';
 import { ProductsModule } from './products/products.module';
@@ -32,6 +33,7 @@ import { AppService } from './app.service';
     SuppliersModule,
     SuppliesModule,
     CostsModule,
+    ExpensesModule,
     ProductsModule,
   ],
   controllers: [AppController],
