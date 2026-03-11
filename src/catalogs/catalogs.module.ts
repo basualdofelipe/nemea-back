@@ -8,6 +8,7 @@ import { ProductName } from './entities/product-name.entity';
 import { ProductSize } from './entities/product-size.entity';
 import { ProductType } from './entities/product-type.entity';
 import { SupplyType } from './entities/supply-type.entity';
+import { ExpenseCategory } from './entities/expense-category.entity';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SupplyType } from './entities/supply-type.entity';
       ProductColor,
       ProductSize,
       SupplyType,
+      ExpenseCategory,
     ]),
   ],
   controllers: [CatalogsController],

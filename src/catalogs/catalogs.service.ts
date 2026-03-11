@@ -13,6 +13,7 @@ import { ProductName } from './entities/product-name.entity';
 import { ProductSize } from './entities/product-size.entity';
 import { ProductType } from './entities/product-type.entity';
 import { SupplyType } from './entities/supply-type.entity';
+import { ExpenseCategory } from './entities/expense-category.entity';
 import { BaseEntity } from '../common/entities/base.entity';
 
 type CatalogEntity = BaseEntity & { name: string };
@@ -24,6 +25,7 @@ const VALID_DIMENSIONS = [
   'product-colors',
   'product-sizes',
   'supply-types',
+  'expense-categories',
 ] as const;
 
 export type CatalogDimension = (typeof VALID_DIMENSIONS)[number];
@@ -56,6 +58,8 @@ export class CatalogsService {
     private readonly productSizeRepo: Repository<ProductSize>,
     @InjectRepository(SupplyType)
     private readonly supplyTypeRepo: Repository<SupplyType>,
+    @InjectRepository(ExpenseCategory)
+    private readonly expenseCategoryRepo: Repository<ExpenseCategory>,
   ) {
     this.dimensionMap = {
       'product-types': this
@@ -70,6 +74,8 @@ export class CatalogsService {
         .productSizeRepo as unknown as Repository<CatalogEntity>,
       'supply-types': this
         .supplyTypeRepo as unknown as Repository<CatalogEntity>,
+      'expense-categories': this
+        .expenseCategoryRepo as unknown as Repository<CatalogEntity>,
     };
   }
 
