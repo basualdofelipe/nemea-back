@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nemea_postgres
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: nemea_db
+      POSTGRES_USER: nemea
+      POSTGRES_PASSWORD: nemea_dev
+    volumes:
+      - nemea_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nemea -d nemea_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: nemea_postgres_test
+    restart: unless-stopped
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_DB: nemea_test
+      POSTGRES_USER: nemea
+      POSTGRES_PASSWORD: nemea_test
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nemea -d nemea_test']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  nemea_pgdata:
