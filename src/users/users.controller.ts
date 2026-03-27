@@ -2,10 +2,11 @@ import {
   Body,
   ConflictException,
   Controller,
-  Delete,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
 } from '@nestjs/common';
 import {
@@ -51,12 +52,25 @@ export class UsersController {
     return this.usersService.create(dto);
   }
 
-  @Delete(':id')
+  @Patch(':id/toggle-status')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Remove a user from the whitelist (ADMIN only)' })
-  @ApiResponse({ status: 200, description: 'User removed successfully' })
+  @ApiOperation({ summary: 'Toggle user active status (ADMIN only)' })
+  @ApiResponse({ status: 200, description: 'User status toggled' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })
-  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.usersService.remove(id);
+  async toggleStatus(@Param('id', ParseUUIDPipe) id: string): Promise<User> {
+    const user = await this.usersService.findById(id);
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    if (user.isActive) {
+      await this.usersService.deactivate(id);
+    } else {
+      await this.usersService.activate(id);
+    }
+    const updated = await this.usersService.findById(id);
+    if (!updated) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    return updated;
   }
 }
