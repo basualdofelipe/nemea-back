@@ -12,6 +12,7 @@ import { typeOrmConfig } from './config/typeorm.config';
 import { ProductsModule } from './products/products.module';
 import { SuppliesModule } from './supplies/supplies.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
+import { TiendanubeConfigModule } from './tiendanube-config/tiendanube-config.module';
 import { UsersModule } from './users/users.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -34,6 +35,7 @@ import { AppService } from './app.service';
     SuppliesModule,
     CostsModule,
     ExpensesModule,
+    TiendanubeConfigModule,
     ProductsModule,
   ],
   controllers: [AppController],
