@@ -271,13 +271,4 @@ export class SuppliesService {
       order: { createdAt: 'DESC' },
     });
   }
-
-  async deactivateBySupplier(supplierId: string): Promise<number> {
-    const result = await this.supplyRepo.update(
-      { supplier: { id: supplierId }, isActive: true },
-      { isActive: false },
-    );
-
-    return result.affected ?? 0;
-  }
 }

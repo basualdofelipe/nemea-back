@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Role } from '../common/types/role.enum';
 import { User } from './entities/user.entity';
@@ -24,8 +24,10 @@ describe('UsersController', () => {
   const mockUsersService = {
     findAll: jest.fn(),
     findByEmail: jest.fn(),
+    findById: jest.fn(),
     create: jest.fn(),
-    remove: jest.fn(),
+    deactivate: jest.fn(),
+    activate: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -83,15 +85,49 @@ describe('UsersController', () => {
     });
   });
 
-  describe('DELETE /users/:id', () => {
-    it('should remove a user by id', async () => {
-      mockUsersService.remove.mockResolvedValue(undefined);
+  describe('PATCH /users/:id/toggle-status', () => {
+    it('should deactivate an active user', async () => {
+      const activeUser = { ...mockUser, isActive: true };
+      const deactivatedUser = { ...mockUser, isActive: false };
+      mockUsersService.findById
+        .mockResolvedValueOnce(activeUser)
+        .mockResolvedValueOnce(deactivatedUser);
+      mockUsersService.deactivate.mockResolvedValue(undefined);
 
-      await controller.remove('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
-
-      expect(usersService.remove).toHaveBeenCalledWith(
+      const result = await controller.toggleStatus(
         'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
       );
+
+      expect(result).toEqual(deactivatedUser);
+      expect(usersService.deactivate).toHaveBeenCalledWith(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      );
+    });
+
+    it('should activate an inactive user', async () => {
+      const inactiveUser = { ...mockUser, isActive: false };
+      const activatedUser = { ...mockUser, isActive: true };
+      mockUsersService.findById
+        .mockResolvedValueOnce(inactiveUser)
+        .mockResolvedValueOnce(activatedUser);
+      mockUsersService.activate.mockResolvedValue(undefined);
+
+      const result = await controller.toggleStatus(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      );
+
+      expect(result).toEqual(activatedUser);
+      expect(usersService.activate).toHaveBeenCalledWith(
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      );
+    });
+
+    it('should throw NotFoundException for non-existent user', async () => {
+      mockUsersService.findById.mockResolvedValue(null);
+
+      await expect(
+        controller.toggleStatus('a1b2c3d4-e5f6-7890-abcd-ef1234567890'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });
