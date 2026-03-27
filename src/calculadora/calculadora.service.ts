@@ -77,15 +77,12 @@ export class CalculadoraService {
     // rate.paymentMethod and rate.withdrawalDays are UNDEFINED.
     // Must use bracket notation to access the real snake_case keys.
     const matchedRate = config.rates.find((rate: ParsedGatewayRate) => {
+      // Cast through unknown to access snake_case fields from raw SQL
+      const raw = rate as unknown as Record<string, unknown>;
       const rateGatewaySlug =
-        rate.gateway?.slug ??
-        (rate as Record<string, unknown>)['gateway']?.toString();
-      const ratePaymentMethod = (rate as Record<string, unknown>)[
-        'payment_method'
-      ] as string | undefined;
-      const rateWithdrawalDays = (rate as Record<string, unknown>)[
-        'withdrawal_days'
-      ] as number | undefined;
+        rate.gateway?.slug ?? String(raw['gateway'] ?? '');
+      const ratePaymentMethod = raw['payment_method'] as string | undefined;
+      const rateWithdrawalDays = raw['withdrawal_days'] as number | undefined;
 
       return (
         rateGatewaySlug === gatewaySlug &&
@@ -102,8 +99,9 @@ export class CalculadoraService {
 
     // CRITICAL BUG #1: ratePercent is NaN (from parseFloat(undefined)).
     // Read the REAL value from rate_percent (snake_case string from raw SQL).
+    const matchedRateRaw = matchedRate as unknown as Record<string, unknown>;
     const gatewayRatePercent = parseFloat(
-      (matchedRate as Record<string, unknown>)['rate_percent'] as string,
+      matchedRateRaw['rate_percent'] as string,
     );
     if (isNaN(gatewayRatePercent)) {
       throw new Error(
@@ -122,8 +120,12 @@ export class CalculadoraService {
       );
     }
 
+    const installmentRaw = matchedInstallment as unknown as Record<
+      string,
+      unknown
+    >;
     const installmentRatePercent = parseFloat(
-      (matchedInstallment as Record<string, unknown>)['rate_percent'] as string,
+      installmentRaw['rate_percent'] as string,
     );
     if (isNaN(installmentRatePercent)) {
       throw new Error(

@@ -13,6 +13,7 @@ import { ProductsModule } from './products/products.module';
 import { SuppliesModule } from './supplies/supplies.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { TiendanubeConfigModule } from './tiendanube-config/tiendanube-config.module';
+import { CalculadoraModule } from './calculadora/calculadora.module';
 import { UsersModule } from './users/users.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -36,6 +37,7 @@ import { AppService } from './app.service';
     CostsModule,
     ExpensesModule,
     TiendanubeConfigModule,
+    CalculadoraModule,
     ProductsModule,
   ],
   controllers: [AppController],
