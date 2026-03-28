@@ -73,21 +73,11 @@ export class CalculadoraService {
     }
 
     // Find matching gateway rate
-    // CRITICAL BUG #1: Raw SQL returns snake_case field names.
-    // rate.paymentMethod and rate.withdrawalDays are UNDEFINED.
-    // Must use bracket notation to access the real snake_case keys.
     const matchedRate = config.rates.find((rate: ParsedGatewayRate) => {
-      // Cast through unknown to access snake_case fields from raw SQL
-      const raw = rate as unknown as Record<string, unknown>;
-      const rateGatewaySlug =
-        rate.gateway?.slug ?? String(raw['gateway'] ?? '');
-      const ratePaymentMethod = raw['payment_method'] as string | undefined;
-      const rateWithdrawalDays = raw['withdrawal_days'] as number | undefined;
-
       return (
-        rateGatewaySlug === gatewaySlug &&
-        ratePaymentMethod === paymentMethod &&
-        Number(rateWithdrawalDays) === withdrawalDays
+        rate.gateway?.slug === gatewaySlug &&
+        rate.paymentMethod === paymentMethod &&
+        rate.withdrawalDays === withdrawalDays
       );
     });
 
@@ -97,17 +87,7 @@ export class CalculadoraService {
       );
     }
 
-    // CRITICAL BUG #1: ratePercent is NaN (from parseFloat(undefined)).
-    // Read the REAL value from rate_percent (snake_case string from raw SQL).
-    const matchedRateRaw = matchedRate as unknown as Record<string, unknown>;
-    const gatewayRatePercent = parseFloat(
-      matchedRateRaw['rate_percent'] as string,
-    );
-    if (isNaN(gatewayRatePercent)) {
-      throw new Error(
-        `Invalid gateway rate_percent for ${gatewaySlug}/${paymentMethod}/${withdrawalDays}d`,
-      );
-    }
+    const gatewayRatePercent = matchedRate.ratePercent;
 
     // Find matching installment rate
     const matchedInstallment = config.installments.find(
@@ -120,18 +100,7 @@ export class CalculadoraService {
       );
     }
 
-    const installmentRaw = matchedInstallment as unknown as Record<
-      string,
-      unknown
-    >;
-    const installmentRatePercent = parseFloat(
-      installmentRaw['rate_percent'] as string,
-    );
-    if (isNaN(installmentRatePercent)) {
-      throw new Error(
-        `Invalid installment rate_percent for ${installments} installments`,
-      );
-    }
+    const installmentRatePercent = matchedInstallment.ratePercent;
 
     // Find plan for CPT rate
     const plan = planSlug
@@ -146,8 +115,7 @@ export class CalculadoraService {
     const cptRate =
       gatewaySlug === 'pago_nube' ? plan.cptPagoNube : plan.cptOtherGateways;
 
-    // CRITICAL BUG #2: IVA/IIBB stored as percentages (21, 3.5),
-    // but formulas need fractions (0.21, 0.035). Divide by 100.
+    // IVA/IIBB stored as percentages (21, 3.5), formulas need fractions (0.21, 0.035)
     return {
       gatewayRate: gatewayRatePercent, // stays as percentage (3.49) -- divided by 100 in formula
       installmentRate: installmentRatePercent, // stays as percentage -- divided by 100 in formula

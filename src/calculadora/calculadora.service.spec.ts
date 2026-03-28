@@ -12,7 +12,7 @@ import {
 import { CalcResult, CalcError, CalcBatchItem } from './dto/calc-result.dto';
 import { ProductCostData } from '../costs/dto/product-with-cost.dto';
 
-// ─── Mock data matching REAL runtime shapes (including bugs) ──────────
+// ─── Mock data matching runtime shapes from TiendanubeConfigService.getAll() ──────────
 
 const GATEWAY_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 
@@ -29,46 +29,49 @@ const mockConfig: TiendanubeConfigAll = {
   ],
   rates: [
     {
-      // Real raw SQL output: snake_case field names
+      id: 'rate-1',
       gateway: {
         id: GATEWAY_UUID,
         slug: 'pago_nube',
         label: 'Pago Nube',
-        is_active: true,
+        isActive: true,
       },
-      payment_method: 'tarjeta_debito_credito',
-      withdrawal_days: 14,
-      rate_percent: '3.49', // STRING from raw SQL -- the REAL value
-      ratePercent: NaN, // BROKEN -- parseGatewayRate produces NaN
+      paymentMethod: 'tarjeta_debito_credito',
+      withdrawalDays: 14,
+      ratePercent: 3.49, // NUMBER -- parseGatewayRate produces correct number
+      isActive: true,
     } as unknown as TiendanubeConfigAll['rates'][number],
     {
+      id: 'rate-2',
       gateway: {
         id: GATEWAY_UUID,
         slug: 'pago_nube',
         label: 'Pago Nube',
-        is_active: true,
+        isActive: true,
       },
-      payment_method: 'transferencia',
-      withdrawal_days: 0,
-      rate_percent: '1.50',
-      ratePercent: NaN,
+      paymentMethod: 'transferencia',
+      withdrawalDays: 0,
+      ratePercent: 1.5,
+      isActive: true,
     } as unknown as TiendanubeConfigAll['rates'][number],
   ],
   installments: [
     {
+      id: 'inst-1',
       installments: 1,
-      rate_percent: '0.00', // STRING from raw SQL
-      ratePercent: NaN, // BROKEN
+      ratePercent: 0.0, // NUMBER
+      isActive: true,
     } as unknown as TiendanubeConfigAll['installments'][number],
     {
+      id: 'inst-2',
       installments: 3,
-      rate_percent: '8.42',
-      ratePercent: NaN,
+      ratePercent: 8.42,
+      isActive: true,
     } as unknown as TiendanubeConfigAll['installments'][number],
   ],
   taxConfig: {
-    ivaRate: 21, // Number, correct -- but PERCENTAGE not fraction
-    iibbRate: 3.5, // Number, correct -- but PERCENTAGE not fraction
+    ivaRate: 21, // Number, percentage -- divided by 100 in resolveRates
+    iibbRate: 3.5, // Number, percentage -- divided by 100 in resolveRates
   } as TiendanubeConfigAll['taxConfig'],
   plans: [
     {
