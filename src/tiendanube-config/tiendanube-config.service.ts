@@ -124,11 +124,7 @@ export class TiendanubeConfigService {
 
     return gateways.map((gateway) => ({
       ...gateway,
-      rates: rates.filter(
-        (r) =>
-          r.gateway?.id === gateway.id ||
-          (r as { gateway_id?: string }).gateway_id === gateway.id,
-      ),
+      rates: rates.filter((r) => r.gateway?.id === gateway.id),
     }));
   }
 
@@ -157,10 +153,16 @@ export class TiendanubeConfigService {
 
   async getInstallmentRates(): Promise<ParsedInstallmentRate[]> {
     const rows: TnInstallmentRate[] = await this.installmentRateRepo.query(
-      `SELECT DISTINCT ON (installments) *
-       FROM tn_installment_rates
-       WHERE is_active = true
-       ORDER BY installments, created_at DESC`,
+      `SELECT DISTINCT ON (installments)
+        id,
+        installments,
+        rate_percent AS "ratePercent",
+        is_active AS "isActive",
+        created_at AS "createdAt",
+        updated_at AS "updatedAt"
+      FROM tn_installment_rates
+      WHERE is_active = true
+      ORDER BY installments, created_at DESC`,
     );
 
     return rows.map((r) => this.parseInstallmentRate(r));
@@ -228,21 +230,28 @@ export class TiendanubeConfigService {
   // --- Private helpers ---
 
   private async getLatestGatewayRates(): Promise<ParsedGatewayRate[]> {
-    const rows: (TnGatewayRate & { gateway_id: string })[] =
-      await this.gatewayRateRepo.query(
-        `SELECT DISTINCT ON (gr.gateway_id, gr.payment_method, gr.withdrawal_days)
-          gr.*,
-          row_to_json(gw.*) as gateway
-        FROM tn_gateway_rates gr
-        JOIN tn_payment_gateways gw ON gw.id = gr.gateway_id
-        WHERE gr.is_active = true
-        ORDER BY gr.gateway_id, gr.payment_method, gr.withdrawal_days, gr.created_at DESC`,
-      );
+    const rows: TnGatewayRate[] = await this.gatewayRateRepo.query(
+      `SELECT DISTINCT ON (gr.gateway_id, gr.payment_method, gr.withdrawal_days)
+        gr.id,
+        gr.payment_method AS "paymentMethod",
+        gr.withdrawal_days AS "withdrawalDays",
+        gr.rate_percent AS "ratePercent",
+        gr.is_active AS "isActive",
+        gr.created_at AS "createdAt",
+        gr.updated_at AS "updatedAt",
+        gr.gateway_id AS "gatewayId",
+        json_build_object(
+          'id', gw.id,
+          'slug', gw.slug,
+          'label', gw.label,
+          'isActive', gw.is_active
+        ) AS gateway
+      FROM tn_gateway_rates gr
+      JOIN tn_payment_gateways gw ON gw.id = gr.gateway_id
+      WHERE gr.is_active = true
+      ORDER BY gr.gateway_id, gr.payment_method, gr.withdrawal_days, gr.created_at DESC`,
+    );
 
-    return rows.map((r) => {
-      // row_to_json returns gateway as a JSON object from raw query
-      const parsed = this.parseGatewayRate(r as unknown as TnGatewayRate);
-      return parsed;
-    });
+    return rows.map((r) => this.parseGatewayRate(r));
   }
 }
