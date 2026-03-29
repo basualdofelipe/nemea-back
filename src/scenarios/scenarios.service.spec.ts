@@ -1,0 +1,301 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { ConflictException, NotFoundException } from '@nestjs/common';
+
+// These imports will resolve after Task 1 creates the files
+import { ScenariosService } from './scenarios.service';
+import { Scenario } from './entities/scenario.entity';
+import { ScenarioOverride } from './entities/scenario-override.entity';
+import { CalculadoraService } from '../calculadora/calculadora.service';
+import { CostsService } from '../costs/costs.service';
+import { ProductsService } from '../products/products.service';
+import { TiendanubeConfigService } from '../tiendanube-config/tiendanube-config.service';
+
+describe('ScenariosService', () => {
+  let service: ScenariosService;
+
+  const mockScenarioRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+    manager: { connection: { createQueryRunner: jest.fn() } },
+  };
+
+  const mockOverrideRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+  };
+
+  const mockCalculadoraService = {
+    calcForward: jest.fn(),
+  };
+
+  const mockCostsService = {
+    calculateAll: jest.fn(),
+  };
+
+  const mockProductsService = {
+    findAll: jest.fn(),
+  };
+
+  const mockTiendanubeConfigService = {
+    getAll: jest.fn(),
+  };
+
+  const USER_ID = 'user-uuid-1';
+  const OTHER_USER_ID = 'user-uuid-2';
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ScenariosService,
+        {
+          provide: getRepositoryToken(Scenario),
+          useValue: mockScenarioRepo,
+        },
+        {
+          provide: getRepositoryToken(ScenarioOverride),
+          useValue: mockOverrideRepo,
+        },
+        {
+          provide: CalculadoraService,
+          useValue: mockCalculadoraService,
+        },
+        {
+          provide: CostsService,
+          useValue: mockCostsService,
+        },
+        {
+          provide: ProductsService,
+          useValue: mockProductsService,
+        },
+        {
+          provide: TiendanubeConfigService,
+          useValue: mockTiendanubeConfigService,
+        },
+      ],
+    }).compile();
+
+    service = module.get<ScenariosService>(ScenariosService);
+    jest.clearAllMocks();
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  // SCEN-01: Create scenario + name uniqueness
+  describe('create', () => {
+    it('should create a scenario with valid data', async () => {
+      const dto = { name: 'Aumento Enero 2027', gatewaySlug: 'pago_nube' };
+      const created = {
+        id: 'scenario-1',
+        ...dto,
+        user: { id: USER_ID },
+        isPublic: false,
+      };
+
+      mockScenarioRepo.findOne.mockResolvedValue(null); // no duplicate
+      mockScenarioRepo.create.mockReturnValue(created);
+      mockScenarioRepo.save.mockResolvedValue(created);
+
+      const result = await service.create(dto as never, USER_ID);
+      expect(result).toEqual(created);
+      expect(mockScenarioRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { name: dto.name, user: { id: USER_ID } },
+        }),
+      );
+    });
+
+    it('should throw ConflictException when name is duplicate for same user', async () => {
+      const dto = { name: 'Duplicate Name' };
+      mockScenarioRepo.findOne.mockResolvedValue({
+        id: 'existing',
+        name: dto.name,
+      });
+
+      await expect(
+        service.create(dto as never, USER_ID),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  // SCEN-04: User scoping -- own + public visibility
+  describe('findAll', () => {
+    it('should return own scenarios and public scenarios from other users', async () => {
+      const ownScenario = {
+        id: 's1',
+        name: 'Mine',
+        user: { id: USER_ID },
+        isPublic: false,
+      };
+      const publicOther = {
+        id: 's2',
+        name: 'Shared',
+        user: { id: OTHER_USER_ID },
+        isPublic: true,
+      };
+
+      mockScenarioRepo.find
+        .mockResolvedValueOnce([ownScenario]) // own query
+        .mockResolvedValueOnce([publicOther]); // public others query
+
+      const result = await service.findAll(USER_ID);
+      expect(result).toHaveLength(2);
+      expect(result).toEqual(
+        expect.arrayContaining([ownScenario, publicOther]),
+      );
+    });
+  });
+
+  // SCEN-04: Only owner can edit
+  describe('update', () => {
+    it('should throw NotFoundException when non-owner tries to update', async () => {
+      mockScenarioRepo.findOne.mockResolvedValue(null); // owner check fails
+
+      await expect(
+        service.update(
+          'scenario-1',
+          { name: 'New Name' } as never,
+          OTHER_USER_ID,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // SCEN-03: Calculate delegates to calcForward and includes inactive products
+  describe('calculate', () => {
+    it('should call calculadoraService.calcForward for each product with effective price', async () => {
+      // Arrange
+      const scenario = {
+        id: 'scenario-1',
+        name: 'Test',
+        gatewaySlug: 'pago_nube',
+        paymentMethod: 'tarjeta_debito_credito',
+        withdrawalDays: 1,
+        installments: 1,
+        plan: { slug: 'esencial' },
+        overrides: [
+          { product: { id: 'prod-1' }, overridePrice: '95000' },
+        ],
+        user: { id: USER_ID },
+        isPublic: false,
+      };
+
+      // Mock findOne to return scenario (via the service's own findOne)
+      mockScenarioRepo.findOne.mockResolvedValue(scenario);
+
+      mockTiendanubeConfigService.getAll.mockResolvedValue({
+        gateways: [],
+        rates: [],
+        installments: [],
+        taxConfig: null,
+        plans: [],
+      });
+
+      mockCostsService.calculateAll.mockResolvedValue(
+        new Map([['prod-1', { cost: 30000 }]]),
+      );
+
+      // NOTE: findAll(true) -- includes inactive products (review fix)
+      mockProductsService.findAll.mockResolvedValue([
+        {
+          id: 'prod-1',
+          currentPrice: '80000',
+          isActive: true,
+          type: { name: 'Billetera' },
+          name: { name: 'Hefesto' },
+          finish: { name: 'Lisa' },
+          color: { name: 'Marron' },
+          size: null,
+        },
+      ]);
+
+      const mockCalcResult = { gananciaReal: 50000, margen: 52.6 };
+      mockCalculadoraService.calcForward.mockReturnValue(mockCalcResult);
+
+      // Act
+      const result = await service.calculate('scenario-1', USER_ID);
+
+      // Assert
+      expect(mockCalculadoraService.calcForward).toHaveBeenCalled();
+      expect(mockProductsService.findAll).toHaveBeenCalledWith(true); // includes inactive
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].overridePrice).toBe(95000);
+      expect(result.results[0].effectivePrice).toBe(95000); // override takes precedence
+      expect(result.results[0].simResult).toEqual(mockCalcResult);
+    });
+
+    it('should handle calcForward errors per product without crashing the loop', async () => {
+      const scenario = {
+        id: 'scenario-1',
+        name: 'Test',
+        gatewaySlug: 'pago_nube',
+        paymentMethod: 'tarjeta_debito_credito',
+        withdrawalDays: 1,
+        installments: 1,
+        plan: { slug: 'esencial' },
+        overrides: [],
+        user: { id: USER_ID },
+        isPublic: false,
+      };
+
+      mockScenarioRepo.findOne.mockResolvedValue(scenario);
+      mockTiendanubeConfigService.getAll.mockResolvedValue({
+        gateways: [],
+        rates: [],
+        installments: [],
+        taxConfig: null,
+        plans: [],
+      });
+      mockCostsService.calculateAll.mockResolvedValue(
+        new Map([
+          ['prod-1', { cost: 30000 }],
+          ['prod-2', { cost: 20000 }],
+        ]),
+      );
+      mockProductsService.findAll.mockResolvedValue([
+        {
+          id: 'prod-1',
+          currentPrice: '80000',
+          isActive: true,
+          type: { name: 'Billetera' },
+          name: { name: 'Hefesto' },
+          finish: { name: 'Lisa' },
+          color: { name: 'Marron' },
+          size: null,
+        },
+        {
+          id: 'prod-2',
+          currentPrice: '50000',
+          isActive: true,
+          type: { name: 'Cinturon' },
+          name: { name: 'Ares' },
+          finish: { name: 'Lisa' },
+          color: { name: 'Negro' },
+          size: null,
+        },
+      ]);
+
+      // First call throws, second succeeds
+      mockCalculadoraService.calcForward
+        .mockImplementationOnce(() => {
+          throw new Error('bad config');
+        })
+        .mockReturnValueOnce({ gananciaReal: 20000, margen: 40 });
+
+      const result = await service.calculate('scenario-1', USER_ID);
+
+      expect(result.results).toHaveLength(2);
+      expect(result.results[0].simResult).toBeNull(); // error product gets null
+      expect(result.results[1].simResult).toEqual({
+        gananciaReal: 20000,
+        margen: 40,
+      }); // other product OK
+    });
+  });
+});
