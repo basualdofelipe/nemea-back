@@ -2,7 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { TnPlan } from '../../tiendanube-config/entities/tn-plan.entity';
-import { ScenarioOverride } from './scenario-override.entity';
+import type { ScenarioOverride } from './scenario-override.entity';
 
 @Entity('scenarios')
 export class Scenario extends BaseEntity {
@@ -42,6 +42,6 @@ export class Scenario extends BaseEntity {
   @JoinColumn({ name: 'plan_id' })
   plan!: TnPlan | null;
 
-  @OneToMany(() => ScenarioOverride, (o) => o.scenario, { cascade: true })
+  @OneToMany('ScenarioOverride', 'scenario', { cascade: true })
   overrides!: ScenarioOverride[];
 }
