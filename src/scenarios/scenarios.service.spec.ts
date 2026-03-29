@@ -281,17 +281,23 @@ describe('ScenariosService', () => {
         },
       ]);
 
-      // First call throws, second succeeds
+      // Call order: sim(prod-1), real(prod-1), sim(prod-2), real(prod-2)
+      // prod-1 sim throws, prod-1 real also throws, prod-2 sim succeeds, prod-2 real succeeds
       mockCalculadoraService.calcForward
         .mockImplementationOnce(() => {
           throw new Error('bad config');
         })
+        .mockImplementationOnce(() => {
+          throw new Error('bad config');
+        })
+        .mockReturnValueOnce({ gananciaReal: 20000, margen: 40 })
         .mockReturnValueOnce({ gananciaReal: 20000, margen: 40 });
 
       const result = await service.calculate('scenario-1', USER_ID);
 
       expect(result.results).toHaveLength(2);
       expect(result.results[0].simResult).toBeNull(); // error product gets null
+      expect(result.results[0].realResult).toBeNull(); // error product real also null
       expect(result.results[1].simResult).toEqual({
         gananciaReal: 20000,
         margen: 40,
