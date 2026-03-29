@@ -82,13 +82,14 @@ export class ScenariosController {
   @Delete(':id')
   @Roles(Role.ADMIN, Role.USER)
   @ApiOperation({
-    summary: 'Delete scenario and all overrides (owner only)',
+    summary: 'Delete scenario and all overrides (owner or admin)',
   })
   async remove(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
   ): Promise<void> {
-    return this.scenariosService.remove(id, userId);
+    return this.scenariosService.remove(id, userId, role);
   }
 
   @Put(':id/overrides')

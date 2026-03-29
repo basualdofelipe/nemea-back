@@ -18,6 +18,7 @@ import { CalculadoraService } from '../calculadora/calculadora.service';
 import { CostsService } from '../costs/costs.service';
 import { ProductsService } from '../products/products.service';
 import { TiendanubeConfigService } from '../tiendanube-config/tiendanube-config.service';
+import { Role } from '../common/types/role.enum';
 import { User } from '../users/entities/user.entity';
 import { TnPlan } from '../tiendanube-config/entities/tn-plan.entity';
 import { Product } from '../products/entities/product.entity';
@@ -163,12 +164,12 @@ export class ScenariosService {
     return this.scenarioRepo.save(scenario);
   }
 
-  // ─── Delete scenario and all overrides (owner only) ───────────
+  // ─── Delete scenario and all overrides (owner or admin) ──────
 
-  async remove(id: string, userId: string): Promise<void> {
-    const scenario = await this.scenarioRepo.findOne({
-      where: { id, user: { id: userId } },
-    });
+  async remove(id: string, userId: string, role: string): Promise<void> {
+    const where =
+      role === Role.ADMIN ? { id } : { id, user: { id: userId } };
+    const scenario = await this.scenarioRepo.findOne({ where });
 
     if (!scenario) {
       throw new NotFoundException('Escenario no encontrado');
