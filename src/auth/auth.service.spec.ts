@@ -1,11 +1,43 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Role } from '../common/types/role.enum';
+import type { Permissions } from '../common/types/permission';
+import { Role } from '../roles/entities/role.entity';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { AuthService } from './auth.service';
+
+const adminPermissions: Permissions = {
+  canViewProducts: true,
+  canEditProducts: true,
+  canViewSupplies: true,
+  canEditSupplies: true,
+  canViewExpenses: true,
+  canEditExpenses: true,
+  canUseCalculator: true,
+  canManageScenarios: true,
+  canViewDashboard: true,
+  canManageConfig: true,
+  canManageUsers: true,
+};
+
+const mockAdminRole: Partial<Role> = {
+  id: 'role-admin-uuid',
+  name: 'ADMIN',
+  isSystem: true,
+  canViewProducts: true,
+  canEditProducts: true,
+  canViewSupplies: true,
+  canEditSupplies: true,
+  canViewExpenses: true,
+  canEditExpenses: true,
+  canUseCalculator: true,
+  canManageScenarios: true,
+  canViewDashboard: true,
+  canManageConfig: true,
+  canManageUsers: true,
+};
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -18,7 +50,7 @@ describe('AuthService', () => {
     name: 'Admin Nemea',
     pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
     googleId: 'google-sub-123',
-    role: Role.ADMIN,
+    role: mockAdminRole as Role,
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -61,7 +93,6 @@ describe('AuthService', () => {
 
   describe('validateGoogleToken', () => {
     it('should return accessToken and user for a whitelisted email with valid token', async () => {
-      // Mock the internal Google verification to return a valid payload
       const mockPayload = {
         email: 'admin@nemea.com',
         name: 'Admin Nemea',
@@ -69,8 +100,6 @@ describe('AuthService', () => {
         sub: 'google-sub-123',
       };
 
-      // We need to mock the google client's verifyIdToken
-      // AuthService uses OAuth2Client internally, so we spy on the private method
       jest
         .spyOn(service as never, 'verifyGoogleIdToken' as never)
         .mockResolvedValue(mockPayload as never);
@@ -86,7 +115,7 @@ describe('AuthService', () => {
       expect(result.accessToken).toBe('mocked-jwt-token');
       expect(result.user.id).toBe('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
       expect(result.user.email).toBe('admin@nemea.com');
-      expect(result.user.role).toBe(Role.ADMIN);
+      expect(result.user.permissions).toEqual(adminPermissions);
       expect(result.user.name).toBe('Admin Nemea');
       expect(result.user.pictureUrl).toBe(
         'https://lh3.googleusercontent.com/photo.jpg',
@@ -106,7 +135,7 @@ describe('AuthService', () => {
       expect(jwtService.sign).toHaveBeenCalledWith({
         sub: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
         email: 'admin@nemea.com',
-        role: Role.ADMIN,
+        permissions: adminPermissions,
       });
     });
 

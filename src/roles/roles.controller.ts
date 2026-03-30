@@ -14,8 +14,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Role as RoleEnum } from '../common/types/role.enum';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { Role } from './entities/role.entity';
@@ -28,7 +27,7 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @Roles(RoleEnum.ADMIN)
+  @RequirePermission('can_manage_users')
   @ApiOperation({ summary: 'Listar todos los roles' })
   @ApiResponse({ status: 200, description: 'Lista de roles con cantidad de usuarios' })
   @ApiResponse({ status: 403, description: 'Permisos insuficientes' })
@@ -37,7 +36,7 @@ export class RolesController {
   }
 
   @Post()
-  @Roles(RoleEnum.ADMIN)
+  @RequirePermission('can_manage_users')
   @ApiOperation({ summary: 'Crear un nuevo rol' })
   @ApiResponse({ status: 201, description: 'Rol creado exitosamente' })
   @ApiResponse({ status: 409, description: 'Ya existe un rol con ese nombre' })
@@ -47,7 +46,7 @@ export class RolesController {
   }
 
   @Patch(':id')
-  @Roles(RoleEnum.ADMIN)
+  @RequirePermission('can_manage_users')
   @ApiOperation({ summary: 'Actualizar un rol existente' })
   @ApiResponse({ status: 200, description: 'Rol actualizado exitosamente' })
   @ApiResponse({ status: 404, description: 'Rol no encontrado' })
@@ -61,7 +60,7 @@ export class RolesController {
   }
 
   @Delete(':id')
-  @Roles(RoleEnum.ADMIN)
+  @RequirePermission('can_manage_users')
   @ApiOperation({ summary: 'Eliminar un rol' })
   @ApiResponse({ status: 200, description: 'Rol eliminado exitosamente' })
   @ApiResponse({ status: 404, description: 'Rol no encontrado' })

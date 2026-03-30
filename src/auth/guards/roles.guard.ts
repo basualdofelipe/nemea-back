@@ -7,9 +7,12 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { Role } from '../../common/types/role.enum';
-import { JwtUser } from '../decorators/current-user.decorator';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
+/**
+ * @deprecated Replaced by PermissionsGuard in 12.1-01.
+ * Kept temporarily until Plan 02 migrates all controllers.
+ */
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
@@ -25,12 +28,14 @@ export class RolesGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<Request>();
-    const user = request.user as JwtUser;
+    const user = request.user as Record<string, unknown> | undefined;
 
-    if (!user || !requiredRoles.includes(user.role as Role)) {
+    if (!user) {
       throw new ForbiddenException('Permisos insuficientes');
     }
 
-    return true;
+    // Legacy: no longer functional since JwtUser no longer has string role.
+    // Kept for compilation only. Will be removed in Plan 02.
+    throw new ForbiddenException('Permisos insuficientes');
   }
 }

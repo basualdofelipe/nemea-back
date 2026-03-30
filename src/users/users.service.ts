@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Role } from '../roles/entities/role.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
 
@@ -9,6 +10,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
   ) {}
 
   async findActiveByEmail(email: string): Promise<User | null> {
@@ -34,7 +37,22 @@ export class UsersService {
   }
 
   async create(dto: CreateUserDto): Promise<User> {
-    const user = this.usersRepository.create(dto);
+    if (dto.roleId) {
+      const roleExists = await this.roleRepository.findOne({
+        where: { id: dto.roleId },
+      });
+
+      if (!roleExists) {
+        throw new NotFoundException('Rol no encontrado');
+      }
+    }
+
+    const user = this.usersRepository.create({
+      email: dto.email,
+      name: dto.name,
+      role: dto.roleId ? ({ id: dto.roleId } as Role) : undefined,
+    });
+
     return this.usersRepository.save(user);
   }
 
