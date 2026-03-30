@@ -15,8 +15,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../common/types/role.enum';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
@@ -28,20 +27,20 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'List all users (ADMIN only)' })
+  @RequirePermission('can_manage_users')
+  @ApiOperation({ summary: 'List all users', description: 'Requires: can_manage_users' })
   @ApiResponse({ status: 200, description: 'List of all users' })
-  @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })
+  @ApiResponse({ status: 403, description: 'Forbidden — insufficient permissions' })
   async findAll(): Promise<User[]> {
     return this.usersService.findAll();
   }
 
   @Post()
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Add a user to the whitelist (ADMIN only)' })
+  @RequirePermission('can_manage_users')
+  @ApiOperation({ summary: 'Add a user to the whitelist', description: 'Requires: can_manage_users' })
   @ApiResponse({ status: 201, description: 'User created successfully' })
   @ApiResponse({ status: 409, description: 'Email already registered' })
-  @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })
+  @ApiResponse({ status: 403, description: 'Forbidden — insufficient permissions' })
   async create(@Body() dto: CreateUserDto): Promise<User> {
     const existing = await this.usersService.findByEmail(dto.email);
 
@@ -53,10 +52,10 @@ export class UsersController {
   }
 
   @Patch(':id/toggle-status')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Toggle user active status (ADMIN only)' })
+  @RequirePermission('can_manage_users')
+  @ApiOperation({ summary: 'Toggle user active status', description: 'Requires: can_manage_users' })
   @ApiResponse({ status: 200, description: 'User status toggled' })
-  @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })
+  @ApiResponse({ status: 403, description: 'Forbidden — insufficient permissions' })
   async toggleStatus(@Param('id', ParseUUIDPipe) id: string): Promise<User> {
     const user = await this.usersService.findById(id);
     if (!user) {

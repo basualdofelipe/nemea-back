@@ -17,8 +17,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../common/types/role.enum';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateBatchProductsDto } from './dto/create-batch-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -45,7 +44,8 @@ export class ProductsController {
   // ─── List / Batch Routes (BEFORE :id to avoid param conflicts) ─
 
   @Get()
-  @ApiOperation({ summary: 'Listar todos los productos con precio actual' })
+  @RequirePermission('can_view_products')
+  @ApiOperation({ summary: 'Listar todos los productos con precio actual', description: 'Requires: can_view_products' })
   @ApiQuery({
     name: 'includeInactive',
     required: false,
@@ -73,8 +73,8 @@ export class ProductsController {
   }
 
   @Post()
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Crear un producto' })
+  @RequirePermission('can_edit_products')
+  @ApiOperation({ summary: 'Crear un producto', description: 'Requires: can_edit_products' })
   @ApiResponse({ status: 201, description: 'Producto creado exitosamente' })
   @ApiResponse({
     status: 409,
@@ -82,16 +82,17 @@ export class ProductsController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden -- requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async create(@Body() dto: CreateProductDto): Promise<Product> {
     return this.productsService.create(dto);
   }
 
   @Post('batch')
-  @Roles(Role.ADMIN)
+  @RequirePermission('can_edit_products')
   @ApiOperation({
     summary: 'Crear productos en lote (colores x talles)',
+    description: 'Requires: can_edit_products',
   })
   @ApiResponse({
     status: 201,
@@ -103,16 +104,17 @@ export class ProductsController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden -- requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async createBatch(@Body() dto: CreateBatchProductsDto): Promise<Product[]> {
     return this.productsService.createBatch(dto);
   }
 
   @Put('batch-bom')
-  @Roles(Role.ADMIN)
+  @RequirePermission('can_edit_products')
   @ApiOperation({
     summary: 'Actualizar BOM de multiples productos a la vez',
+    description: 'Requires: can_edit_products',
   })
   @ApiResponse({
     status: 200,
@@ -128,16 +130,17 @@ export class ProductsController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden -- requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async batchUpdateBom(@Body() dto: BatchBomDto): Promise<void> {
     return this.productsService.batchUpdateBom(dto);
   }
 
   @Post('batch-prices')
-  @Roles(Role.ADMIN)
+  @RequirePermission('can_edit_products')
   @ApiOperation({
     summary: 'Agregar el mismo precio a multiples productos',
+    description: 'Requires: can_edit_products',
   })
   @ApiResponse({
     status: 201,
@@ -149,7 +152,7 @@ export class ProductsController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden -- requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async batchAddPrice(
     @Body() dto: BatchProductPriceDto,
@@ -160,7 +163,8 @@ export class ProductsController {
   // ─── :id Routes ────────────────────────────────────────────────
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener un producto por ID con costo y desglose' })
+  @RequirePermission('can_view_products')
+  @ApiOperation({ summary: 'Obtener un producto por ID con costo y desglose', description: 'Requires: can_view_products' })
   @ApiResponse({
     status: 200,
     description: 'Producto encontrado con datos de costo',
@@ -180,8 +184,8 @@ export class ProductsController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Actualizar un producto' })
+  @RequirePermission('can_edit_products')
+  @ApiOperation({ summary: 'Actualizar un producto', description: 'Requires: can_edit_products' })
   @ApiResponse({
     status: 200,
     description: 'Producto actualizado exitosamente',
@@ -193,7 +197,7 @@ export class ProductsController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden -- requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -203,9 +207,10 @@ export class ProductsController {
   }
 
   @Patch(':id/toggle-status')
-  @Roles(Role.ADMIN)
+  @RequirePermission('can_edit_products')
   @ApiOperation({
     summary: 'Alternar estado activo/inactivo del producto',
+    description: 'Requires: can_edit_products',
   })
   @ApiResponse({
     status: 200,
@@ -214,7 +219,7 @@ export class ProductsController {
   @ApiResponse({ status: 404, description: 'Producto no encontrado' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden -- requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async toggleStatus(@Param('id', ParseUUIDPipe) id: string): Promise<Product> {
     return this.productsService.toggleStatus(id);
@@ -223,7 +228,8 @@ export class ProductsController {
   // ─── BOM Routes ────────────────────────────────────────────────
 
   @Get(':id/bom')
-  @ApiOperation({ summary: 'Obtener BOM activo de un producto' })
+  @RequirePermission('can_view_products')
+  @ApiOperation({ summary: 'Obtener BOM activo de un producto', description: 'Requires: can_view_products' })
   @ApiResponse({ status: 200, description: 'BOM del producto' })
   @ApiResponse({ status: 404, description: 'Producto no encontrado' })
   async getBom(
@@ -233,9 +239,10 @@ export class ProductsController {
   }
 
   @Put(':id/bom')
-  @Roles(Role.ADMIN)
+  @RequirePermission('can_edit_products')
   @ApiOperation({
     summary: 'Actualizar BOM de un producto (version swap atomico)',
+    description: 'Requires: can_edit_products',
   })
   @ApiResponse({ status: 200, description: 'BOM actualizado exitosamente' })
   @ApiResponse({
@@ -248,7 +255,7 @@ export class ProductsController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden -- requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async updateBom(
     @Param('id', ParseUUIDPipe) id: string,
@@ -260,7 +267,8 @@ export class ProductsController {
   // ─── Price History Routes ──────────────────────────────────────
 
   @Get(':id/prices')
-  @ApiOperation({ summary: 'Obtener historial de precios de un producto' })
+  @RequirePermission('can_view_products')
+  @ApiOperation({ summary: 'Obtener historial de precios de un producto', description: 'Requires: can_view_products' })
   @ApiResponse({
     status: 200,
     description: 'Historial de precios del producto',
@@ -273,8 +281,8 @@ export class ProductsController {
   }
 
   @Post(':id/prices')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Agregar precio de venta a un producto' })
+  @RequirePermission('can_edit_products')
+  @ApiOperation({ summary: 'Agregar precio de venta a un producto', description: 'Requires: can_edit_products' })
   @ApiResponse({
     status: 201,
     description: 'Precio agregado exitosamente',
@@ -282,7 +290,7 @@ export class ProductsController {
   @ApiResponse({ status: 404, description: 'Producto no encontrado' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden -- requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async addPrice(
     @Param('id', ParseUUIDPipe) id: string,

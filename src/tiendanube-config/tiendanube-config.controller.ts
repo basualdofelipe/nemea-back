@@ -13,8 +13,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../common/types/role.enum';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import {
   ParsedGatewayRate,
   ParsedInstallmentRate,
@@ -36,7 +35,7 @@ export class TiendanubeConfigController {
   constructor(private readonly configService: TiendanubeConfigService) {}
 
   @Get('all')
-  @ApiOperation({ summary: 'Obtener toda la configuracion de Tiendanube' })
+  @ApiOperation({ summary: 'Obtener toda la configuracion de Tiendanube', description: 'Requires: authenticated user (no specific permission)' })
   @ApiResponse({
     status: 200,
     description:
@@ -47,7 +46,7 @@ export class TiendanubeConfigController {
   }
 
   @Get('gateways')
-  @ApiOperation({ summary: 'Obtener pasarelas de pago con tasas actuales' })
+  @ApiOperation({ summary: 'Obtener pasarelas de pago con tasas actuales', description: 'Requires: authenticated user (no specific permission)' })
   @ApiResponse({
     status: 200,
     description: 'Pasarelas con tasas agrupadas',
@@ -59,15 +58,16 @@ export class TiendanubeConfigController {
   }
 
   @Put('gateway-rates/:gatewayId')
-  @Roles(Role.ADMIN)
+  @RequirePermission('can_manage_config')
   @ApiOperation({
     summary: 'Actualizar tasa de una pasarela (crea nuevo registro historico)',
+    description: 'Requires: can_manage_config',
   })
   @ApiResponse({ status: 200, description: 'Tasa actualizada exitosamente' })
   @ApiResponse({ status: 404, description: 'Pasarela no encontrada' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async updateGatewayRate(
     @Param('gatewayId', ParseUUIDPipe) gatewayId: string,
@@ -77,7 +77,7 @@ export class TiendanubeConfigController {
   }
 
   @Get('installments')
-  @ApiOperation({ summary: 'Obtener tasas de cuotas actuales' })
+  @ApiOperation({ summary: 'Obtener tasas de cuotas actuales', description: 'Requires: authenticated user (no specific permission)' })
   @ApiResponse({
     status: 200,
     description: 'Tasas de cuotas (ultima por cantidad de cuotas)',
@@ -87,14 +87,15 @@ export class TiendanubeConfigController {
   }
 
   @Put('installment-rates/:installments')
-  @Roles(Role.ADMIN)
+  @RequirePermission('can_manage_config')
   @ApiOperation({
     summary: 'Actualizar tasa de cuotas (crea nuevo registro historico)',
+    description: 'Requires: can_manage_config',
   })
   @ApiResponse({ status: 200, description: 'Tasa de cuotas actualizada' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async updateInstallmentRate(
     @Param('installments', ParseIntPipe) installments: number,
@@ -104,7 +105,7 @@ export class TiendanubeConfigController {
   }
 
   @Get('taxes')
-  @ApiOperation({ summary: 'Obtener configuracion de impuestos actual' })
+  @ApiOperation({ summary: 'Obtener configuracion de impuestos actual', description: 'Requires: authenticated user (no specific permission)' })
   @ApiResponse({
     status: 200,
     description: 'Configuracion de impuestos (IVA, IIBB)',
@@ -114,10 +115,11 @@ export class TiendanubeConfigController {
   }
 
   @Put('taxes')
-  @Roles(Role.ADMIN)
+  @RequirePermission('can_manage_config')
   @ApiOperation({
     summary:
       'Actualizar configuracion de impuestos (crea nuevo registro historico)',
+    description: 'Requires: can_manage_config',
   })
   @ApiResponse({
     status: 200,
@@ -125,7 +127,7 @@ export class TiendanubeConfigController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async updateTaxConfig(
     @Body() dto: UpdateTaxConfigDto,
@@ -134,7 +136,7 @@ export class TiendanubeConfigController {
   }
 
   @Get('plans')
-  @ApiOperation({ summary: 'Obtener planes de Tiendanube activos' })
+  @ApiOperation({ summary: 'Obtener planes de Tiendanube activos', description: 'Requires: authenticated user (no specific permission)' })
   @ApiResponse({
     status: 200,
     description: 'Lista de planes activos',
@@ -144,13 +146,13 @@ export class TiendanubeConfigController {
   }
 
   @Put('plans/:id')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Actualizar tasas CPT de un plan' })
+  @RequirePermission('can_manage_config')
+  @ApiOperation({ summary: 'Actualizar tasas CPT de un plan', description: 'Requires: can_manage_config' })
   @ApiResponse({ status: 200, description: 'Plan actualizado' })
   @ApiResponse({ status: 404, description: 'Plan no encontrado' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async updatePlan(
     @Param('id', ParseUUIDPipe) id: string,

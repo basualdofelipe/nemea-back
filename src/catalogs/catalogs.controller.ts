@@ -15,8 +15,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../common/types/role.enum';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CatalogsService } from './catalogs.service';
 import { CreateCatalogItemDto } from './dto/create-catalog-item.dto';
 import { UpdateCatalogItemDto } from './dto/update-catalog-item.dto';
@@ -38,12 +37,13 @@ export class CatalogsController {
   constructor(private readonly catalogsService: CatalogsService) {}
 
   @Get(':dimension')
+  @RequirePermission('can_view_products')
   @ApiParam({
     name: 'dimension',
     enum: DIMENSION_ENUM,
     description: 'Dimension del catalogo',
   })
-  @ApiOperation({ summary: 'Listar items de una dimension del catalogo' })
+  @ApiOperation({ summary: 'Listar items de una dimension del catalogo', description: 'Requires: can_view_products' })
   @ApiResponse({ status: 200, description: 'Lista de items del catalogo' })
   @ApiResponse({ status: 404, description: 'Dimension no encontrada' })
   async findAll(
@@ -53,18 +53,18 @@ export class CatalogsController {
   }
 
   @Post(':dimension')
-  @Roles(Role.ADMIN)
+  @RequirePermission('can_edit_products')
   @ApiParam({
     name: 'dimension',
     enum: DIMENSION_ENUM,
     description: 'Dimension del catalogo',
   })
-  @ApiOperation({ summary: 'Crear un item en una dimension del catalogo' })
+  @ApiOperation({ summary: 'Crear un item en una dimension del catalogo', description: 'Requires: can_edit_products' })
   @ApiResponse({ status: 201, description: 'Item creado exitosamente' })
   @ApiResponse({ status: 409, description: 'Ya existe un item con ese nombre' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async create(
     @Param('dimension') dimension: string,
@@ -74,7 +74,7 @@ export class CatalogsController {
   }
 
   @Put(':dimension/:id')
-  @Roles(Role.ADMIN)
+  @RequirePermission('can_edit_products')
   @ApiParam({
     name: 'dimension',
     enum: DIMENSION_ENUM,
@@ -82,13 +82,14 @@ export class CatalogsController {
   })
   @ApiOperation({
     summary: 'Actualizar un item de una dimension del catalogo',
+    description: 'Requires: can_edit_products',
   })
   @ApiResponse({ status: 200, description: 'Item actualizado exitosamente' })
   @ApiResponse({ status: 404, description: 'Item no encontrado' })
   @ApiResponse({ status: 409, description: 'Ya existe un item con ese nombre' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async update(
     @Param('dimension') dimension: string,
@@ -99,7 +100,7 @@ export class CatalogsController {
   }
 
   @Delete(':dimension/:id')
-  @Roles(Role.ADMIN)
+  @RequirePermission('can_edit_products')
   @ApiParam({
     name: 'dimension',
     enum: DIMENSION_ENUM,
@@ -107,6 +108,7 @@ export class CatalogsController {
   })
   @ApiOperation({
     summary: 'Eliminar un item de una dimension del catalogo',
+    description: 'Requires: can_edit_products',
   })
   @ApiResponse({ status: 200, description: 'Item eliminado exitosamente' })
   @ApiResponse({ status: 404, description: 'Item no encontrado' })
@@ -116,7 +118,7 @@ export class CatalogsController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — requiere rol ADMIN',
+    description: 'Forbidden — insufficient permissions',
   })
   async remove(
     @Param('dimension') dimension: string,
