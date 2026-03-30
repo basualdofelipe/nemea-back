@@ -1,0 +1,90 @@
+export type Permission =
+  | 'can_view_products'
+  | 'can_edit_products'
+  | 'can_view_supplies'
+  | 'can_edit_supplies'
+  | 'can_view_expenses'
+  | 'can_edit_expenses'
+  | 'can_use_calculator'
+  | 'can_manage_scenarios'
+  | 'can_view_dashboard'
+  | 'can_manage_config'
+  | 'can_manage_users';
+
+export const PERMISSIONS: readonly Permission[] = [
+  'can_view_products',
+  'can_edit_products',
+  'can_view_supplies',
+  'can_edit_supplies',
+  'can_view_expenses',
+  'can_edit_expenses',
+  'can_use_calculator',
+  'can_manage_scenarios',
+  'can_view_dashboard',
+  'can_manage_config',
+  'can_manage_users',
+] as const;
+
+export interface Permissions {
+  canViewProducts: boolean;
+  canEditProducts: boolean;
+  canViewSupplies: boolean;
+  canEditSupplies: boolean;
+  canViewExpenses: boolean;
+  canEditExpenses: boolean;
+  canUseCalculator: boolean;
+  canManageScenarios: boolean;
+  canViewDashboard: boolean;
+  canManageConfig: boolean;
+  canManageUsers: boolean;
+}
+
+export const NO_PERMISSIONS: Permissions = {
+  canViewProducts: false,
+  canEditProducts: false,
+  canViewSupplies: false,
+  canEditSupplies: false,
+  canViewExpenses: false,
+  canEditExpenses: false,
+  canUseCalculator: false,
+  canManageScenarios: false,
+  canViewDashboard: false,
+  canManageConfig: false,
+  canManageUsers: false,
+};
+
+export const PERMISSION_TO_CAMEL: Record<Permission, keyof Permissions> = {
+  can_view_products: 'canViewProducts',
+  can_edit_products: 'canEditProducts',
+  can_view_supplies: 'canViewSupplies',
+  can_edit_supplies: 'canEditSupplies',
+  can_view_expenses: 'canViewExpenses',
+  can_edit_expenses: 'canEditExpenses',
+  can_use_calculator: 'canUseCalculator',
+  can_manage_scenarios: 'canManageScenarios',
+  can_view_dashboard: 'canViewDashboard',
+  can_manage_config: 'canManageConfig',
+  can_manage_users: 'canManageUsers',
+};
+
+export function extractPermissions(role: unknown): Permissions {
+  if (role == null || typeof role !== 'object') {
+    return { ...NO_PERMISSIONS };
+  }
+
+  const r = role as Record<string, unknown>;
+
+  return {
+    canViewProducts: Boolean(r.canViewProducts),
+    canEditProducts: Boolean(r.canEditProducts),
+    canViewSupplies: Boolean(r.canViewSupplies),
+    canEditSupplies: Boolean(r.canEditSupplies),
+    canViewExpenses: Boolean(r.canViewExpenses),
+    canEditExpenses: Boolean(r.canEditExpenses),
+    canUseCalculator: Boolean(r.canUseCalculator),
+    canManageScenarios: Boolean(r.canManageScenarios),
+    canViewDashboard: Boolean(r.canViewDashboard),
+    canManageConfig: Boolean(r.canManageConfig),
+    canManageUsers: Boolean(r.canManageUsers),
+  };
+}
