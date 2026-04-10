@@ -171,9 +171,12 @@ export class ScenariosService {
     userId: string,
     permissions: Permissions,
   ): Promise<void> {
-    const where = permissions.canManageUsers
-      ? { id }
-      : { id, user: { id: userId } };
+    // Admin bypass: users with can_manage_users (system admins) can delete any scenario
+    // to allow cleanup of scenarios belonging to deactivated or removed users.
+    // Note: canManageUsers is intentionally used here (not canManageScenarios) because
+    // only full system admins should be able to delete scenarios they don't own.
+    const isAdmin = permissions.canManageUsers;
+    const where = isAdmin ? { id } : { id, user: { id: userId } };
     const scenario = await this.scenarioRepo.findOne({ where });
 
     if (!scenario) {
