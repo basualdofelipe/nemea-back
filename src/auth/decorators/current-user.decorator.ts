@@ -1,11 +1,10 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
-import type { Permissions } from '../../common/types/permission';
 
 export interface JwtUser {
   id: string;
   email: string;
-  permissions: Permissions;
+  role: string;
 }
 
 export const CurrentUser = createParamDecorator(

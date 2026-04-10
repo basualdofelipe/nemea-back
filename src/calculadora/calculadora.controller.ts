@@ -5,7 +5,8 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../common/types/role.enum';
 import { TiendanubeConfigService } from '../tiendanube-config/tiendanube-config.service';
 import { CostsService } from '../costs/costs.service';
 import { CalculadoraService } from './calculadora.service';
@@ -30,10 +31,9 @@ export class CalculadoraController {
   ) {}
 
   @Post('forward')
-  @RequirePermission('can_use_calculator')
+  @Roles(Role.ADMIN, Role.USER)
   @ApiOperation({
     summary: 'Calcular ganancia real a partir de precio de venta (forward)',
-    description: 'Requires: can_use_calculator',
   })
   @ApiResponse({
     status: 200,
@@ -72,11 +72,10 @@ export class CalculadoraController {
   }
 
   @Post('inverse')
-  @RequirePermission('can_use_calculator')
+  @Roles(Role.ADMIN, Role.USER)
   @ApiOperation({
     summary:
       'Calcular precio de venta necesario para ganancia deseada (inverse)',
-    description: 'Requires: can_use_calculator',
   })
   @ApiResponse({
     status: 200,
@@ -126,10 +125,9 @@ export class CalculadoraController {
   }
 
   @Post('batch')
-  @RequirePermission('can_use_calculator')
+  @Roles(Role.ADMIN, Role.USER)
   @ApiOperation({
     summary: 'Calcular margenes de todos los productos (batch)',
-    description: 'Requires: can_use_calculator',
   })
   @ApiResponse({
     status: 200,

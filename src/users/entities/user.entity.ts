@@ -1,6 +1,6 @@
-import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
+import { Column, Entity, Unique } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
-import { Role } from '../../roles/entities/role.entity';
+import { Role } from '../../common/types/role.enum';
 
 @Entity('users')
 @Unique(['email'])
@@ -17,8 +17,7 @@ export class User extends BaseEntity {
   @Column({ name: 'google_id', type: 'varchar', length: 50, nullable: true })
   googleId!: string | null;
 
-  @ManyToOne(() => Role, { eager: true })
-  @JoinColumn({ name: 'role_id' })
+  @Column({ type: 'enum', enum: Role, default: Role.USER })
   role!: Role;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })

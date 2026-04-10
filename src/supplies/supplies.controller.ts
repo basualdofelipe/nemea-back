@@ -17,7 +17,8 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../common/types/role.enum';
 import { CreateSupplyDto } from './dto/create-supply.dto';
 import { CreateSupplyPriceDto } from './dto/create-supply-price.dto';
 import { UpdateSupplyDto } from './dto/update-supply.dto';
@@ -32,8 +33,7 @@ export class SuppliesController {
   constructor(private readonly suppliesService: SuppliesService) {}
 
   @Get()
-  @RequirePermission('can_view_supplies')
-  @ApiOperation({ summary: 'Listar todos los insumos con precio actual', description: 'Requires: can_view_supplies' })
+  @ApiOperation({ summary: 'Listar todos los insumos con precio actual' })
   @ApiQuery({
     name: 'includeInactive',
     required: false,
@@ -49,8 +49,7 @@ export class SuppliesController {
   }
 
   @Get(':id')
-  @RequirePermission('can_view_supplies')
-  @ApiOperation({ summary: 'Obtener un insumo por ID', description: 'Requires: can_view_supplies' })
+  @ApiOperation({ summary: 'Obtener un insumo por ID' })
   @ApiResponse({ status: 200, description: 'Insumo encontrado' })
   @ApiResponse({ status: 404, description: 'Insumo no encontrado' })
   async findOne(
@@ -60,8 +59,8 @@ export class SuppliesController {
   }
 
   @Post()
-  @RequirePermission('can_edit_supplies')
-  @ApiOperation({ summary: 'Crear un insumo', description: 'Requires: can_edit_supplies' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Crear un insumo' })
   @ApiResponse({ status: 201, description: 'Insumo creado exitosamente' })
   @ApiResponse({
     status: 409,
@@ -70,15 +69,15 @@ export class SuppliesController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — insufficient permissions',
+    description: 'Forbidden — requiere rol ADMIN',
   })
   async create(@Body() dto: CreateSupplyDto): Promise<SupplyWithPrice> {
     return this.suppliesService.create(dto);
   }
 
   @Put(':id')
-  @RequirePermission('can_edit_supplies')
-  @ApiOperation({ summary: 'Actualizar un insumo', description: 'Requires: can_edit_supplies' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Actualizar un insumo' })
   @ApiResponse({ status: 200, description: 'Insumo actualizado exitosamente' })
   @ApiResponse({ status: 404, description: 'Insumo no encontrado' })
   @ApiResponse({
@@ -88,7 +87,7 @@ export class SuppliesController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — insufficient permissions',
+    description: 'Forbidden — requiere rol ADMIN',
   })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -98,10 +97,9 @@ export class SuppliesController {
   }
 
   @Patch(':id/toggle-status')
-  @RequirePermission('can_edit_supplies')
+  @Roles(Role.ADMIN)
   @ApiOperation({
     summary: 'Alternar estado activo/inactivo del insumo',
-    description: 'Requires: can_edit_supplies',
   })
   @ApiResponse({
     status: 200,
@@ -110,15 +108,14 @@ export class SuppliesController {
   @ApiResponse({ status: 404, description: 'Insumo no encontrado' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — insufficient permissions',
+    description: 'Forbidden — requiere rol ADMIN',
   })
   async toggleStatus(@Param('id', ParseUUIDPipe) id: string): Promise<Supply> {
     return this.suppliesService.toggleStatus(id);
   }
 
   @Get(':id/prices')
-  @RequirePermission('can_view_supplies')
-  @ApiOperation({ summary: 'Obtener historial de precios de un insumo', description: 'Requires: can_view_supplies' })
+  @ApiOperation({ summary: 'Obtener historial de precios de un insumo' })
   @ApiResponse({
     status: 200,
     description: 'Historial de precios (mas reciente primero)',
@@ -131,13 +128,13 @@ export class SuppliesController {
   }
 
   @Post(':id/prices')
-  @RequirePermission('can_edit_supplies')
-  @ApiOperation({ summary: 'Agregar un nuevo precio a un insumo', description: 'Requires: can_edit_supplies' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Agregar un nuevo precio a un insumo' })
   @ApiResponse({ status: 201, description: 'Precio agregado exitosamente' })
   @ApiResponse({ status: 404, description: 'Insumo no encontrado' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — insufficient permissions',
+    description: 'Forbidden — requiere rol ADMIN',
   })
   async addPrice(
     @Param('id', ParseUUIDPipe) id: string,

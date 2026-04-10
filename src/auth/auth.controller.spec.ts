@@ -1,44 +1,12 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import type { Permissions } from '../common/types/permission';
+import { Role } from '../common/types/role.enum';
 import { User } from '../users/entities/user.entity';
-import { Role } from '../roles/entities/role.entity';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtUser } from './decorators/current-user.decorator';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
-
-const adminPermissions: Permissions = {
-  canViewProducts: true,
-  canEditProducts: true,
-  canViewSupplies: true,
-  canEditSupplies: true,
-  canViewExpenses: true,
-  canEditExpenses: true,
-  canUseCalculator: true,
-  canManageScenarios: true,
-  canViewDashboard: true,
-  canManageConfig: true,
-  canManageUsers: true,
-};
-
-const mockAdminRole: Partial<Role> = {
-  id: 'role-admin-uuid',
-  name: 'ADMIN',
-  isSystem: true,
-  canViewProducts: true,
-  canEditProducts: true,
-  canViewSupplies: true,
-  canEditSupplies: true,
-  canViewExpenses: true,
-  canEditExpenses: true,
-  canUseCalculator: true,
-  canManageScenarios: true,
-  canViewDashboard: true,
-  canManageConfig: true,
-  canManageUsers: true,
-};
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -49,7 +17,7 @@ describe('AuthController', () => {
     user: {
       id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
       email: 'admin@nemea.com',
-      permissions: adminPermissions,
+      role: Role.ADMIN,
       name: 'Admin Nemea',
       pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
     },
@@ -61,7 +29,7 @@ describe('AuthController', () => {
     name: 'Admin Nemea',
     pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
     googleId: 'google-sub-123',
-    role: mockAdminRole as Role,
+    role: Role.ADMIN,
     isActive: true,
   };
 
@@ -127,7 +95,7 @@ describe('AuthController', () => {
       const jwtUser: JwtUser = {
         id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
         email: 'admin@nemea.com',
-        permissions: adminPermissions,
+        role: Role.ADMIN,
       };
       mockAuthService.getProfile.mockResolvedValue(mockUser);
 
@@ -143,7 +111,7 @@ describe('AuthController', () => {
       const jwtUser: JwtUser = {
         id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
         email: 'deleted@nemea.com',
-        permissions: adminPermissions,
+        role: Role.USER,
       };
       mockAuthService.getProfile.mockResolvedValue(null);
 

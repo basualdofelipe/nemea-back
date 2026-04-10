@@ -10,7 +10,6 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { envValidationSchema } from './config/env.validation';
 import { typeOrmConfig } from './config/typeorm.config';
 import { ProductsModule } from './products/products.module';
-import { RolesModule } from './roles/roles.module';
 import { SuppliesModule } from './supplies/supplies.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { TiendanubeConfigModule } from './tiendanube-config/tiendanube-config.module';
@@ -33,7 +32,6 @@ import { AppService } from './app.service';
     TypeOrmModule.forRoot(typeOrmConfig),
     AuthModule,
     UsersModule,
-    RolesModule,
     CatalogsModule,
     SuppliersModule,
     SuppliesModule,

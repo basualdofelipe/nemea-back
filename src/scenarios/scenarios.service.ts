@@ -18,6 +18,7 @@ import { CalculadoraService } from '../calculadora/calculadora.service';
 import { CostsService } from '../costs/costs.service';
 import { ProductsService } from '../products/products.service';
 import { TiendanubeConfigService } from '../tiendanube-config/tiendanube-config.service';
+import { Role } from '../common/types/role.enum';
 import { User } from '../users/entities/user.entity';
 import { TnPlan } from '../tiendanube-config/entities/tn-plan.entity';
 import { Product } from '../products/entities/product.entity';
@@ -165,8 +166,8 @@ export class ScenariosService {
 
   // ─── Delete scenario and all overrides (owner or admin) ──────
 
-  async remove(id: string, userId: string, isAdmin: boolean): Promise<void> {
-    const where = isAdmin ? { id } : { id, user: { id: userId } };
+  async remove(id: string, userId: string, role: string): Promise<void> {
+    const where = role === Role.ADMIN ? { id } : { id, user: { id: userId } };
     const scenario = await this.scenarioRepo.findOne({ where });
 
     if (!scenario) {
@@ -226,10 +227,7 @@ export class ScenariosService {
         }),
       );
 
-      const saved = await queryRunner.manager.save(
-        ScenarioOverride,
-        entities,
-      );
+      const saved = await queryRunner.manager.save(ScenarioOverride, entities);
 
       await queryRunner.commitTransaction();
 
@@ -244,10 +242,7 @@ export class ScenariosService {
 
   // ─── Calculate margins for all products in scenario ───────────
 
-  async calculate(
-    id: string,
-    userId: string,
-  ): Promise<ScenarioCalcResponse> {
+  async calculate(id: string, userId: string): Promise<ScenarioCalcResponse> {
     // Load scenario with overrides
     const scenario = await this.findOne(id, userId);
 
@@ -270,8 +265,7 @@ export class ScenariosService {
 
     // Resolve scenario gateway config (use defaults if null)
     const gatewaySlug = scenario.gatewaySlug ?? 'pago_nube';
-    const paymentMethod =
-      scenario.paymentMethod ?? 'tarjeta_debito_credito';
+    const paymentMethod = scenario.paymentMethod ?? 'tarjeta_debito_credito';
     const withdrawalDays = scenario.withdrawalDays ?? 1;
     const installments = scenario.installments ?? 1;
     const planSlug = scenario.plan?.slug ?? 'esencial';

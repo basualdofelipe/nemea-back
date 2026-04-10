@@ -16,7 +16,8 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../common/types/role.enum';
 import { ExpensesService } from './expenses.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
@@ -30,8 +31,7 @@ export class ExpensesController {
   constructor(private readonly expensesService: ExpensesService) {}
 
   @Get()
-  @RequirePermission('can_view_expenses')
-  @ApiOperation({ summary: 'Listar gastos con filtros opcionales', description: 'Requires: can_view_expenses' })
+  @ApiOperation({ summary: 'Listar gastos con filtros opcionales' })
   @ApiResponse({ status: 200, description: 'Lista de gastos' })
   async findAll(
     @Query(new ValidationPipe({ transform: true, whitelist: true }))
@@ -41,8 +41,7 @@ export class ExpensesController {
   }
 
   @Get(':id')
-  @RequirePermission('can_view_expenses')
-  @ApiOperation({ summary: 'Obtener un gasto por ID', description: 'Requires: can_view_expenses' })
+  @ApiOperation({ summary: 'Obtener un gasto por ID' })
   @ApiResponse({ status: 200, description: 'Gasto encontrado' })
   @ApiResponse({ status: 404, description: 'Gasto no encontrado' })
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Expense> {
@@ -50,26 +49,26 @@ export class ExpensesController {
   }
 
   @Post()
-  @RequirePermission('can_edit_expenses')
-  @ApiOperation({ summary: 'Crear un gasto', description: 'Requires: can_edit_expenses' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Crear un gasto' })
   @ApiResponse({ status: 201, description: 'Gasto creado exitosamente' })
   @ApiResponse({ status: 404, description: 'Categoria no encontrada' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — insufficient permissions',
+    description: 'Forbidden — requiere rol ADMIN',
   })
   async create(@Body() dto: CreateExpenseDto): Promise<Expense> {
     return this.expensesService.create(dto);
   }
 
   @Put(':id')
-  @RequirePermission('can_edit_expenses')
-  @ApiOperation({ summary: 'Actualizar un gasto', description: 'Requires: can_edit_expenses' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Actualizar un gasto' })
   @ApiResponse({ status: 200, description: 'Gasto actualizado exitosamente' })
   @ApiResponse({ status: 404, description: 'Gasto no encontrado' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — insufficient permissions',
+    description: 'Forbidden — requiere rol ADMIN',
   })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -79,13 +78,13 @@ export class ExpensesController {
   }
 
   @Delete(':id')
-  @RequirePermission('can_edit_expenses')
-  @ApiOperation({ summary: 'Eliminar un gasto', description: 'Requires: can_edit_expenses' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Eliminar un gasto' })
   @ApiResponse({ status: 200, description: 'Gasto eliminado exitosamente' })
   @ApiResponse({ status: 404, description: 'Gasto no encontrado' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — insufficient permissions',
+    description: 'Forbidden — requiere rol ADMIN',
   })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.expensesService.remove(id);

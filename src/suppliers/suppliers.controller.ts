@@ -15,7 +15,8 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../common/types/role.enum';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { Supplier } from './entities/supplier.entity';
@@ -28,16 +29,14 @@ export class SuppliersController {
   constructor(private readonly suppliersService: SuppliersService) {}
 
   @Get()
-  @RequirePermission('can_view_supplies')
-  @ApiOperation({ summary: 'Listar todos los proveedores (incluye inactivos)', description: 'Requires: can_view_supplies' })
+  @ApiOperation({ summary: 'Listar todos los proveedores (incluye inactivos)' })
   @ApiResponse({ status: 200, description: 'Lista de proveedores' })
   async findAll(): Promise<Supplier[]> {
     return this.suppliersService.findAll();
   }
 
   @Get(':id')
-  @RequirePermission('can_view_supplies')
-  @ApiOperation({ summary: 'Obtener un proveedor por ID', description: 'Requires: can_view_supplies' })
+  @ApiOperation({ summary: 'Obtener un proveedor por ID' })
   @ApiResponse({ status: 200, description: 'Proveedor encontrado' })
   @ApiResponse({ status: 404, description: 'Proveedor no encontrado' })
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Supplier> {
@@ -45,8 +44,8 @@ export class SuppliersController {
   }
 
   @Post()
-  @RequirePermission('can_edit_supplies')
-  @ApiOperation({ summary: 'Crear un proveedor', description: 'Requires: can_edit_supplies' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Crear un proveedor' })
   @ApiResponse({ status: 201, description: 'Proveedor creado exitosamente' })
   @ApiResponse({
     status: 409,
@@ -54,15 +53,15 @@ export class SuppliersController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — insufficient permissions',
+    description: 'Forbidden — requiere rol ADMIN',
   })
   async create(@Body() dto: CreateSupplierDto): Promise<Supplier> {
     return this.suppliersService.create(dto);
   }
 
   @Put(':id')
-  @RequirePermission('can_edit_supplies')
-  @ApiOperation({ summary: 'Actualizar un proveedor', description: 'Requires: can_edit_supplies' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Actualizar un proveedor' })
   @ApiResponse({
     status: 200,
     description: 'Proveedor actualizado exitosamente',
@@ -74,7 +73,7 @@ export class SuppliersController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — insufficient permissions',
+    description: 'Forbidden — requiere rol ADMIN',
   })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -84,8 +83,8 @@ export class SuppliersController {
   }
 
   @Patch(':id/toggle-status')
-  @RequirePermission('can_edit_supplies')
-  @ApiOperation({ summary: 'Alternar estado activo/inactivo del proveedor', description: 'Requires: can_edit_supplies' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Alternar estado activo/inactivo del proveedor' })
   @ApiResponse({
     status: 200,
     description: 'Estado del proveedor actualizado',
@@ -93,7 +92,7 @@ export class SuppliersController {
   @ApiResponse({ status: 404, description: 'Proveedor no encontrado' })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — insufficient permissions',
+    description: 'Forbidden — requiere rol ADMIN',
   })
   async toggleStatus(
     @Param('id', ParseUUIDPipe) id: string,
@@ -102,8 +101,8 @@ export class SuppliersController {
   }
 
   @Delete(':id')
-  @RequirePermission('can_edit_supplies')
-  @ApiOperation({ summary: 'Eliminar un proveedor permanentemente', description: 'Requires: can_edit_supplies' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Eliminar un proveedor permanentemente' })
   @ApiResponse({
     status: 200,
     description: 'Proveedor eliminado exitosamente',
@@ -115,7 +114,7 @@ export class SuppliersController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden — insufficient permissions',
+    description: 'Forbidden — requiere rol ADMIN',
   })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.suppliersService.remove(id);

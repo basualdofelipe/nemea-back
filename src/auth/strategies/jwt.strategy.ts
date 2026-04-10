@@ -2,15 +2,12 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import type { Permissions } from '../../common/types/permission';
-import { extractPermissions } from '../../common/types/permission';
 import { UsersService } from '../../users/users.service';
-import type { JwtUser } from '../decorators/current-user.decorator';
 
 export interface JwtPayload {
   sub: string;
   email: string;
-  permissions: Permissions;
+  role: string;
 }
 
 @Injectable()
@@ -26,17 +23,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: JwtPayload): Promise<JwtUser> {
+  async validate(
+    payload: JwtPayload,
+  ): Promise<{ id: string; email: string; role: string }> {
     const user = await this.usersService.findActiveByEmail(payload.email);
 
     if (!user) {
       throw new UnauthorizedException('Usuario no autorizado');
     }
 
-    return {
-      id: user.id,
-      email: user.email,
-      permissions: extractPermissions(user.role),
-    };
+    return { id: user.id, email: user.email, role: user.role };
   }
 }

@@ -1,26 +1,9 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Role } from '../roles/entities/role.entity';
+import { Role } from '../common/types/role.enum';
 import { User } from './entities/user.entity';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
-
-const mockAdminRole: Partial<Role> = {
-  id: 'role-admin-uuid',
-  name: 'ADMIN',
-  isSystem: true,
-  canViewProducts: true,
-  canEditProducts: true,
-  canViewSupplies: true,
-  canEditSupplies: true,
-  canViewExpenses: true,
-  canEditExpenses: true,
-  canUseCalculator: true,
-  canManageScenarios: true,
-  canViewDashboard: true,
-  canManageConfig: true,
-  canManageUsers: true,
-};
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -32,7 +15,7 @@ describe('UsersController', () => {
     name: 'Admin Nemea',
     pictureUrl: null,
     googleId: null,
-    role: mockAdminRole as Role,
+    role: Role.ADMIN,
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -76,11 +59,11 @@ describe('UsersController', () => {
   });
 
   describe('POST /users', () => {
-    it('should create a user with email and roleId', async () => {
-      const dto = { email: 'new@nemea.com', roleId: 'role-user-uuid' };
+    it('should create a user with email and role', async () => {
+      const dto = { email: 'new@nemea.com', role: Role.USER };
       const createdUser = {
         ...mockUser,
-        email: dto.email,
+        ...dto,
         id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
       };
       mockUsersService.findByEmail.mockResolvedValue(null);
@@ -94,7 +77,7 @@ describe('UsersController', () => {
     });
 
     it('should throw ConflictException for duplicate email', async () => {
-      const dto = { email: 'admin@nemea.com' };
+      const dto = { email: 'admin@nemea.com', role: Role.ADMIN };
       mockUsersService.findByEmail.mockResolvedValue(mockUser);
 
       await expect(controller.create(dto)).rejects.toThrow(ConflictException);

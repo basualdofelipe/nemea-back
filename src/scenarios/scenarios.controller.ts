@@ -15,9 +15,9 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { JwtUser } from '../auth/decorators/current-user.decorator';
+import { Role } from '../common/types/role.enum';
 import { ScenariosService } from './scenarios.service';
 import { CreateScenarioDto } from './dto/create-scenario.dto';
 import { UpdateScenarioDto } from './dto/update-scenario.dto';
@@ -33,8 +33,8 @@ export class ScenariosController {
   constructor(private readonly scenariosService: ScenariosService) {}
 
   @Post()
-  @RequirePermission('can_manage_scenarios')
-  @ApiOperation({ summary: 'Create a new scenario', description: 'Requires: can_manage_scenarios' })
+  @Roles(Role.ADMIN, Role.USER)
+  @ApiOperation({ summary: 'Create a new scenario' })
   @ApiResponse({ status: 201, description: 'Scenario created' })
   @ApiResponse({
     status: 409,
@@ -48,15 +48,17 @@ export class ScenariosController {
   }
 
   @Get()
-  @RequirePermission('can_manage_scenarios')
-  @ApiOperation({ summary: 'List own scenarios + public scenarios from others', description: 'Requires: can_manage_scenarios' })
+  @Roles(Role.ADMIN, Role.USER)
+  @ApiOperation({
+    summary: 'List own scenarios + public scenarios from others',
+  })
   async findAll(@CurrentUser('id') userId: string): Promise<Scenario[]> {
     return this.scenariosService.findAll(userId);
   }
 
   @Get(':id')
-  @RequirePermission('can_manage_scenarios')
-  @ApiOperation({ summary: 'Get scenario with overrides', description: 'Requires: can_manage_scenarios' })
+  @Roles(Role.ADMIN, Role.USER)
+  @ApiOperation({ summary: 'Get scenario with overrides' })
   @ApiResponse({
     status: 404,
     description: 'Scenario not found or not accessible',
@@ -69,8 +71,8 @@ export class ScenariosController {
   }
 
   @Put(':id')
-  @RequirePermission('can_manage_scenarios')
-  @ApiOperation({ summary: 'Update scenario metadata (owner only)', description: 'Requires: can_manage_scenarios' })
+  @Roles(Role.ADMIN, Role.USER)
+  @ApiOperation({ summary: 'Update scenario metadata (owner only)' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateScenarioDto,
@@ -80,25 +82,22 @@ export class ScenariosController {
   }
 
   @Delete(':id')
-  @RequirePermission('can_manage_scenarios')
+  @Roles(Role.ADMIN, Role.USER)
   @ApiOperation({
     summary: 'Delete scenario and all overrides (owner or admin)',
-    description: 'Requires: can_manage_scenarios',
   })
   async remove(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('id') userId: string,
-    @CurrentUser() user: JwtUser,
+    @CurrentUser('role') role: string,
   ): Promise<void> {
-    const isAdmin = user.permissions.canManageScenarios && user.permissions.canManageUsers;
-    return this.scenariosService.remove(id, userId, isAdmin);
+    return this.scenariosService.remove(id, userId, role);
   }
 
   @Put(':id/overrides')
-  @RequirePermission('can_manage_scenarios')
+  @Roles(Role.ADMIN, Role.USER)
   @ApiOperation({
     summary: 'Bulk upsert override prices for scenario (owner only)',
-    description: 'Requires: can_manage_scenarios',
   })
   async upsertOverrides(
     @Param('id', ParseUUIDPipe) id: string,
@@ -109,10 +108,9 @@ export class ScenariosController {
   }
 
   @Get(':id/calculate')
-  @RequirePermission('can_manage_scenarios')
+  @Roles(Role.ADMIN, Role.USER)
   @ApiOperation({
     summary: 'Calculate margins for all products in scenario',
-    description: 'Requires: can_manage_scenarios',
   })
   async calculate(
     @Param('id', ParseUUIDPipe) id: string,
@@ -122,10 +120,9 @@ export class ScenariosController {
   }
 
   @Patch(':id/toggle-public')
-  @RequirePermission('can_manage_scenarios')
+  @Roles(Role.ADMIN, Role.USER)
   @ApiOperation({
     summary: 'Toggle scenario public visibility (owner only)',
-    description: 'Requires: can_manage_scenarios',
   })
   async togglePublic(
     @Param('id', ParseUUIDPipe) id: string,

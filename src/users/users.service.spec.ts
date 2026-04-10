@@ -1,26 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Role } from '../roles/entities/role.entity';
+import { Role } from '../common/types/role.enum';
 import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
-
-const mockAdminRole: Partial<Role> = {
-  id: 'role-admin-uuid',
-  name: 'ADMIN',
-  isSystem: true,
-  canViewProducts: true,
-  canEditProducts: true,
-  canViewSupplies: true,
-  canEditSupplies: true,
-  canViewExpenses: true,
-  canEditExpenses: true,
-  canUseCalculator: true,
-  canManageScenarios: true,
-  canViewDashboard: true,
-  canManageConfig: true,
-  canManageUsers: true,
-};
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -32,7 +15,7 @@ describe('UsersService', () => {
     name: 'Admin Nemea',
     pictureUrl: null,
     googleId: null,
-    role: mockAdminRole as Role,
+    role: Role.ADMIN,
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -47,10 +30,6 @@ describe('UsersService', () => {
     delete: jest.fn(),
   };
 
-  const mockRoleRepository = {
-    findOne: jest.fn(),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -58,10 +37,6 @@ describe('UsersService', () => {
         {
           provide: getRepositoryToken(User),
           useValue: mockRepository,
-        },
-        {
-          provide: getRepositoryToken(Role),
-          useValue: mockRoleRepository,
         },
       ],
     }).compile();
@@ -109,24 +84,20 @@ describe('UsersService', () => {
   });
 
   describe('create', () => {
-    it('should create a user with roleId and return it', async () => {
-      const dto = { email: 'new@user.com', roleId: 'role-user-uuid', name: 'New User' };
+    it('should create a user and return it', async () => {
+      const dto = { email: 'new@user.com', role: Role.USER, name: 'New User' };
       const createdUser = {
         ...mockUser,
-        email: dto.email,
-        name: dto.name,
+        ...dto,
         id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
       };
-      mockRoleRepository.findOne.mockResolvedValue({ id: 'role-user-uuid', name: 'USER' });
       mockRepository.create.mockReturnValue(createdUser);
       mockRepository.save.mockResolvedValue(createdUser);
 
       const result = await service.create(dto);
 
       expect(result).toEqual(createdUser);
-      expect(mockRoleRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 'role-user-uuid' },
-      });
+      expect(repository.create).toHaveBeenCalledWith(dto);
       expect(repository.save).toHaveBeenCalledWith(createdUser);
     });
   });
