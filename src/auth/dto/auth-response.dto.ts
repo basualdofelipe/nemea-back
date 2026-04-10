@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import type { Permissions } from '../../common/types/permission';
 
 class AuthUserDto {
   @ApiProperty({
@@ -13,8 +14,10 @@ class AuthUserDto {
   })
   email!: string;
 
-  @ApiProperty({ example: 'admin', description: 'Rol del usuario' })
-  role!: string;
+  @ApiProperty({
+    description: 'Permisos del usuario',
+  })
+  permissions!: Permissions;
 
   @ApiProperty({
     example: 'Juan Perez',

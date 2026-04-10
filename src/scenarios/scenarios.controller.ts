@@ -16,7 +16,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type JwtUser,
+} from '../auth/decorators/current-user.decorator';
 import { Role } from '../common/types/role.enum';
 import { ScenariosService } from './scenarios.service';
 import { CreateScenarioDto } from './dto/create-scenario.dto';
@@ -88,10 +91,11 @@ export class ScenariosController {
   })
   async remove(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser('id') userId: string,
-    @CurrentUser('role') role: string,
+    @CurrentUser() user: JwtUser,
   ): Promise<void> {
-    return this.scenariosService.remove(id, userId, role);
+    // Pass 'admin' role string when user has can_manage_users permission (admin indicator)
+    const role = user.permissions.canManageUsers ? Role.ADMIN : Role.USER;
+    return this.scenariosService.remove(id, user.id, role);
   }
 
   @Put(':id/overrides')

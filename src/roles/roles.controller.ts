@@ -16,8 +16,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Role as RoleEnum } from '../common/types/role.enum';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { Role } from './entities/role.entity';
@@ -30,7 +29,7 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @Roles(RoleEnum.ADMIN)
+  @RequirePermission('can_manage_users')
   @ApiOperation({ summary: 'List all roles with user counts (ADMIN only)' })
   @ApiResponse({ status: 200, description: 'List of all roles' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -39,7 +38,7 @@ export class RolesController {
   }
 
   @Post()
-  @Roles(RoleEnum.ADMIN)
+  @RequirePermission('can_manage_users')
   @ApiOperation({ summary: 'Create a new role (ADMIN only)' })
   @ApiResponse({ status: 201, description: 'Role created successfully' })
   @ApiResponse({ status: 409, description: 'Role name already exists' })
@@ -49,7 +48,7 @@ export class RolesController {
   }
 
   @Patch(':id')
-  @Roles(RoleEnum.ADMIN)
+  @RequirePermission('can_manage_users')
   @ApiOperation({ summary: 'Update a role (ADMIN only)' })
   @ApiResponse({ status: 200, description: 'Role updated successfully' })
   @ApiResponse({ status: 404, description: 'Role not found' })
@@ -63,7 +62,7 @@ export class RolesController {
   }
 
   @Delete(':id')
-  @Roles(RoleEnum.ADMIN)
+  @RequirePermission('can_manage_users')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a role (ADMIN only)' })
   @ApiResponse({ status: 204, description: 'Role deleted successfully' })

@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { OAuth2Client, TokenPayload } from 'google-auth-library';
+import { extractPermissions } from '../common/types/permission';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -40,10 +41,12 @@ export class AuthService {
       googleId: payload.sub,
     });
 
+    const permissions = extractPermissions(user.role);
+
     const accessToken = this.jwtService.sign({
       sub: user.id,
       email: user.email,
-      role: user.role,
+      permissions,
     });
 
     return {
@@ -51,7 +54,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        role: user.role,
+        permissions,
         name: payload.name ?? user.name ?? null,
         pictureUrl: payload.picture ?? user.pictureUrl ?? null,
       },

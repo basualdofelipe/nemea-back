@@ -27,7 +27,24 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const user = request.user as JwtUser;
 
-    if (!user || !requiredRoles.includes(user.role as Role)) {
+    if (!user) {
+      throw new ForbiddenException('Permisos insuficientes');
+    }
+
+    // RolesGuard is kept for backward compatibility during Plan 02 migration.
+    // Controllers still use @Roles(Role.ADMIN) / @Roles(Role.USER).
+    // Since JwtUser now carries permissions instead of role string, we map:
+    // - Role.ADMIN: user must have canManageUsers permission
+    // - Role.USER: any authenticated user is accepted (all users have some permissions)
+    const hasRole = requiredRoles.some((role) => {
+      if (role === Role.ADMIN) {
+        return user.permissions?.canManageUsers === true;
+      }
+      // Role.USER: any authenticated user qualifies
+      return true;
+    });
+
+    if (!hasRole) {
       throw new ForbiddenException('Permisos insuficientes');
     }
 

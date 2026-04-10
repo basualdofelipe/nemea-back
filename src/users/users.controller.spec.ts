@@ -1,6 +1,6 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Role } from '../common/types/role.enum';
+import { NO_PERMISSIONS } from '../common/types/permission';
 import { User } from './entities/user.entity';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
@@ -9,13 +9,20 @@ describe('UsersController', () => {
   let controller: UsersController;
   let usersService: UsersService;
 
+  const mockRole = {
+    id: 'role-uuid-1',
+    name: 'ADMIN',
+    isSystem: true,
+    ...Object.fromEntries(Object.keys(NO_PERMISSIONS).map((k) => [k, true])),
+  };
+
   const mockUser: Partial<User> = {
     id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     email: 'admin@nemea.com',
     name: 'Admin Nemea',
     pictureUrl: null,
     googleId: null,
-    role: Role.ADMIN,
+    role: mockRole as User['role'],
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -59,8 +66,8 @@ describe('UsersController', () => {
   });
 
   describe('POST /users', () => {
-    it('should create a user with email and role', async () => {
-      const dto = { email: 'new@nemea.com', role: Role.USER };
+    it('should create a user with email and roleId', async () => {
+      const dto = { email: 'new@nemea.com', roleId: 'role-uuid-1' };
       const createdUser = {
         ...mockUser,
         ...dto,
@@ -77,7 +84,7 @@ describe('UsersController', () => {
     });
 
     it('should throw ConflictException for duplicate email', async () => {
-      const dto = { email: 'admin@nemea.com', role: Role.ADMIN };
+      const dto = { email: 'admin@nemea.com', roleId: 'role-uuid-1' };
       mockUsersService.findByEmail.mockResolvedValue(mockUser);
 
       await expect(controller.create(dto)).rejects.toThrow(ConflictException);

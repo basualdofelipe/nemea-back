@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Role } from '../common/types/role.enum';
+import { NO_PERMISSIONS } from '../common/types/permission';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -12,13 +12,30 @@ describe('AuthService', () => {
   let usersService: UsersService;
   let jwtService: JwtService;
 
+  const mockRole = {
+    id: 'role-uuid-1',
+    name: 'ADMIN',
+    isSystem: true,
+    canViewProducts: true,
+    canEditProducts: true,
+    canViewSupplies: true,
+    canEditSupplies: true,
+    canViewExpenses: true,
+    canEditExpenses: true,
+    canUseCalculator: true,
+    canManageScenarios: true,
+    canViewDashboard: true,
+    canManageConfig: true,
+    canManageUsers: true,
+  };
+
   const mockUser: Partial<User> = {
     id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     email: 'admin@nemea.com',
     name: 'Admin Nemea',
     pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
     googleId: 'google-sub-123',
-    role: Role.ADMIN,
+    role: mockRole as User['role'],
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -86,7 +103,8 @@ describe('AuthService', () => {
       expect(result.accessToken).toBe('mocked-jwt-token');
       expect(result.user.id).toBe('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
       expect(result.user.email).toBe('admin@nemea.com');
-      expect(result.user.role).toBe(Role.ADMIN);
+      expect(result.user.permissions).toBeDefined();
+      expect(result.user.permissions.canManageUsers).toBe(true);
       expect(result.user.name).toBe('Admin Nemea');
       expect(result.user.pictureUrl).toBe(
         'https://lh3.googleusercontent.com/photo.jpg',
@@ -103,11 +121,13 @@ describe('AuthService', () => {
           googleId: 'google-sub-123',
         },
       );
-      expect(jwtService.sign).toHaveBeenCalledWith({
-        sub: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        email: 'admin@nemea.com',
-        role: Role.ADMIN,
-      });
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+          email: 'admin@nemea.com',
+          permissions: expect.objectContaining({ canManageUsers: true }),
+        }),
+      );
     });
 
     it('should throw UnauthorizedException for non-whitelisted email', async () => {
@@ -179,6 +199,13 @@ describe('AuthService', () => {
       );
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('extractPermissions via NO_PERMISSIONS', () => {
+    it('NO_PERMISSIONS constant has all flags false', () => {
+      expect(NO_PERMISSIONS.canManageUsers).toBe(false);
+      expect(NO_PERMISSIONS.canViewProducts).toBe(false);
     });
   });
 });
