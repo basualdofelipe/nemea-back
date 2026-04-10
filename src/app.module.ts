@@ -14,6 +14,7 @@ import { SuppliesModule } from './supplies/supplies.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { TiendanubeConfigModule } from './tiendanube-config/tiendanube-config.module';
 import { CalculadoraModule } from './calculadora/calculadora.module';
+import { RolesModule } from './roles/roles.module';
 import { ScenariosModule } from './scenarios/scenarios.module';
 import { UsersModule } from './users/users.module';
 import { AppController } from './app.controller';
@@ -32,6 +33,7 @@ import { AppService } from './app.service';
     TypeOrmModule.forRoot(typeOrmConfig),
     AuthModule,
     UsersModule,
+    RolesModule,
     CatalogsModule,
     SuppliersModule,
     SuppliesModule,
