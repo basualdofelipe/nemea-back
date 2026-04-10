@@ -16,10 +16,10 @@ export class CreateUserDto {
   @IsNotEmpty()
   email!: string;
 
-  @ApiProperty({ required: false, description: 'UUID del rol a asignar' })
+  @ApiProperty({ description: 'UUID del rol a asignar' })
   @IsUUID()
-  @IsOptional()
-  roleId?: string;
+  @IsNotEmpty()
+  roleId!: string;
 
   @ApiProperty({ required: false, description: 'Nombre del usuario' })
   @IsString()
