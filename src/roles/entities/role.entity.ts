@@ -1,6 +1,6 @@
 import { Column, Entity, OneToMany, Unique } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
-import { User } from '../../users/entities/user.entity';
+import type { User } from '../../users/entities/user.entity';
 
 @Entity('roles')
 @Unique(['name'])
@@ -47,7 +47,7 @@ export class Role extends BaseEntity {
   @Column({ name: 'can_manage_users', type: 'boolean', default: false })
   canManageUsers!: boolean;
 
-  @OneToMany(() => User, (user) => user.role)
+  @OneToMany('User', (user: User) => user.role)
   users!: User[];
 
   // Non-persisted virtual property — populated by loadRelationCountAndMap in RolesService.findAll()
