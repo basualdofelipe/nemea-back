@@ -94,6 +94,11 @@ export class CatalogsService {
   }
 
   async findAll(dimension: string): Promise<CatalogEntity[]> {
+    if (dimension === 'product-sizes') {
+      return this.productSizeRepo.find({
+        order: { sortOrder: 'ASC', name: 'ASC' },
+      });
+    }
     const repo = this.getRepository(dimension);
     return repo.find({ order: { name: 'ASC' } });
   }

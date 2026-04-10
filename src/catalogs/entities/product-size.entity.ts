@@ -8,4 +8,7 @@ export class ProductSize extends BaseEntity {
 
   @Column({ name: 'sku_code', type: 'smallint', unique: true })
   skuCode!: number;
+
+  @Column({ name: 'sort_order', type: 'smallint', default: 0 })
+  sortOrder!: number;
 }
