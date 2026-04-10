@@ -18,7 +18,7 @@ import {
 } from '@nestjs/swagger';
 import {
   CurrentUser,
-  JwtUser,
+  type JwtUser,
 } from '../auth/decorators/current-user.decorator';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CreateUserDto } from './dto/create-user.dto';

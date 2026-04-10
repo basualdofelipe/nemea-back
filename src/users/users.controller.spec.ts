@@ -101,8 +101,14 @@ describe('UsersController', () => {
         .mockResolvedValueOnce(deactivatedUser);
       mockUsersService.deactivate.mockResolvedValue(undefined);
 
+      const currentUser = {
+        id: 'other-user-uuid',
+        email: 'other@nemea.com',
+        permissions: NO_PERMISSIONS,
+      };
       const result = await controller.toggleStatus(
         'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        currentUser,
       );
 
       expect(result).toEqual(deactivatedUser);
@@ -119,8 +125,14 @@ describe('UsersController', () => {
         .mockResolvedValueOnce(activatedUser);
       mockUsersService.activate.mockResolvedValue(undefined);
 
+      const currentUser = {
+        id: 'other-user-uuid',
+        email: 'other@nemea.com',
+        permissions: NO_PERMISSIONS,
+      };
       const result = await controller.toggleStatus(
         'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        currentUser,
       );
 
       expect(result).toEqual(activatedUser);
@@ -132,8 +144,16 @@ describe('UsersController', () => {
     it('should throw NotFoundException for non-existent user', async () => {
       mockUsersService.findById.mockResolvedValue(null);
 
+      const currentUser = {
+        id: 'other-user-uuid',
+        email: 'other@nemea.com',
+        permissions: NO_PERMISSIONS,
+      };
       await expect(
-        controller.toggleStatus('a1b2c3d4-e5f6-7890-abcd-ef1234567890'),
+        controller.toggleStatus(
+          'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+          currentUser,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
