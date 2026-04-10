@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -15,6 +16,10 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import {
+  CurrentUser,
+  JwtUser,
+} from '../auth/decorators/current-user.decorator';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
@@ -74,7 +79,13 @@ export class UsersController {
     status: 403,
     description: 'Forbidden — requires can_manage_users permission',
   })
-  async toggleStatus(@Param('id', ParseUUIDPipe) id: string): Promise<User> {
+  async toggleStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() currentUser: JwtUser,
+  ): Promise<User> {
+    if (id === currentUser.id) {
+      throw new BadRequestException('No puedes desactivar tu propia cuenta');
+    }
     const user = await this.usersService.findById(id);
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
