@@ -123,6 +123,13 @@ export class CreateRolesAndMigrateUsers1773000000000 implements MigrationInterfa
     // Convert to lowercase for enum values
     await queryRunner.query(`UPDATE "users" SET "role" = LOWER("role")`);
 
+    // Safety: remap any custom role names (e.g. 'inversor') to 'user' before casting.
+    // Without this, the USING cast below would fail with "invalid input value for enum"
+    // for any user assigned a role that does not map to 'admin' or 'user'.
+    await queryRunner.query(
+      `UPDATE "users" SET "role" = 'user' WHERE "role" NOT IN ('admin', 'user')`,
+    );
+
     // Convert varchar to enum
     await queryRunner.query(
       `ALTER TABLE "users" ALTER COLUMN "role" TYPE "public"."users_role_enum" USING "role"::"public"."users_role_enum"`,
