@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { Not, QueryRunner, Repository } from 'typeorm';
 import { Scenario } from './entities/scenario.entity';
 import { ScenarioOverride } from './entities/scenario-override.entity';
 import { CreateScenarioDto } from './dto/create-scenario.dto';
@@ -369,5 +369,34 @@ export class ScenariosService {
       installments,
       results,
     };
+  }
+
+  // ─── Cross-module: transfer scenarios to a new owner ──────────
+  //
+  // Called by UsersService.remove inside a transaction. Moves all scenarios
+  // owned by `victimId` to `newOwnerId`, appending `suffix` to each name and
+  // truncating to varchar(200). NEVER calls qr.commit/rollback/release — the
+  // caller owns the transaction lifecycle. If execute() fails, the error is
+  // propagated for the caller to rollback.
+  //
+  // SQL injection safety: `suffix` is bound via setParameter (not string
+  // concatenation). The arrow function in .set() is the only way TypeORM
+  // accepts raw SQL with parametrization (see TypeORM issue #1580).
+  async transferOwnership(
+    victimId: string,
+    newOwnerId: string,
+    suffix: string,
+    qr: QueryRunner,
+  ): Promise<void> {
+    await qr.manager
+      .createQueryBuilder()
+      .update(Scenario)
+      .set({
+        name: () => "LEFT(COALESCE(name, '') || :suffix, 200)",
+        user: { id: newOwnerId },
+      })
+      .where('user_id = :victimId', { victimId })
+      .setParameter('suffix', suffix)
+      .execute();
   }
 }
