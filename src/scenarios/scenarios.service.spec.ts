@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { QueryRunner } from 'typeorm';
 
 // These imports will resolve after Task 1 creates the files
 import { ScenariosService } from './scenarios.service';
@@ -118,9 +119,9 @@ describe('ScenariosService', () => {
         name: dto.name,
       });
 
-      await expect(
-        service.create(dto as never, USER_ID),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.create(dto as never, USER_ID)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -179,9 +180,7 @@ describe('ScenariosService', () => {
         withdrawalDays: 1,
         installments: 1,
         plan: { slug: 'esencial' },
-        overrides: [
-          { product: { id: 'prod-1' }, overridePrice: '95000' },
-        ],
+        overrides: [{ product: { id: 'prod-1' }, overridePrice: '95000' }],
         user: { id: USER_ID },
         isPublic: false,
       };
@@ -302,6 +301,75 @@ describe('ScenariosService', () => {
         gananciaReal: 20000,
         margen: 40,
       }); // other product OK
+    });
+  });
+
+  // 12.4-02: Cross-module ownership transfer (called by UsersService.remove)
+  describe('transferOwnership', () => {
+    const mockUpdateBuilder = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      setParameter: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 2 }),
+    };
+
+    const mockQueryRunner = {
+      manager: {
+        createQueryBuilder: jest.fn(() => mockUpdateBuilder),
+      },
+    };
+
+    beforeEach(() => {
+      mockUpdateBuilder.update.mockClear().mockReturnThis();
+      mockUpdateBuilder.set.mockClear().mockReturnThis();
+      mockUpdateBuilder.where.mockClear().mockReturnThis();
+      mockUpdateBuilder.setParameter.mockClear().mockReturnThis();
+      mockUpdateBuilder.execute.mockClear().mockResolvedValue({ affected: 2 });
+      mockQueryRunner.manager.createQueryBuilder
+        .mockClear()
+        .mockReturnValue(mockUpdateBuilder);
+    });
+
+    it('aplica el sufijo y mueve scenarios al nuevo owner', async () => {
+      await service.transferOwnership(
+        'victim-uuid',
+        'caller-uuid',
+        ' - Juan',
+        mockQueryRunner as unknown as QueryRunner,
+      );
+
+      expect(mockUpdateBuilder.update).toHaveBeenCalledWith(Scenario);
+      expect(mockUpdateBuilder.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: expect.any(Function),
+          user: { id: 'caller-uuid' },
+        }),
+      );
+      expect(mockUpdateBuilder.where).toHaveBeenCalledWith(
+        'user_id = :victimId',
+        { victimId: 'victim-uuid' },
+      );
+      expect(mockUpdateBuilder.setParameter).toHaveBeenCalledWith(
+        'suffix',
+        ' - Juan',
+      );
+      expect(mockUpdateBuilder.execute).toHaveBeenCalledTimes(1);
+    });
+
+    it('es no-op cuando victim no tiene scenarios (execute returns affected 0)', async () => {
+      mockUpdateBuilder.execute.mockResolvedValueOnce({ affected: 0 });
+
+      await expect(
+        service.transferOwnership(
+          'victim',
+          'caller',
+          ' - X',
+          mockQueryRunner as unknown as QueryRunner,
+        ),
+      ).resolves.toBeUndefined();
+
+      expect(mockUpdateBuilder.execute).toHaveBeenCalled();
     });
   });
 });
