@@ -1,10 +1,10 @@
 import {
-  BadRequestException,
   Body,
   ConflictException,
   Controller,
+  Delete,
   Get,
-  NotFoundException,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -16,12 +16,10 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import {
-  CurrentUser,
-  type JwtUser,
-} from '../auth/decorators/current-user.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
 
@@ -68,37 +66,51 @@ export class UsersController {
     return this.usersService.create(dto);
   }
 
-  @Patch(':id/toggle-status')
+  @Patch(':id')
   @RequirePermission('can_manage_users')
   @ApiOperation({
-    summary: 'Toggle user active status (admin only)',
+    summary: 'Update user fields (admin only)',
     description: 'Requires: can_manage_users',
   })
-  @ApiResponse({ status: 200, description: 'User status toggled' })
+  @ApiResponse({ status: 200, description: 'User updated successfully' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request — self-lockout guard or invalid payload',
+  })
+  @ApiResponse({ status: 404, description: 'User or role not found' })
   @ApiResponse({
     status: 403,
     description: 'Forbidden — requires can_manage_users permission',
   })
-  async toggleStatus(
+  async update(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() currentUser: JwtUser,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser('id') callerId: string,
   ): Promise<User> {
-    if (id === currentUser.id) {
-      throw new BadRequestException('No puedes desactivar tu propia cuenta');
-    }
-    const user = await this.usersService.findById(id);
-    if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
-    if (user.isActive) {
-      await this.usersService.deactivate(id);
-    } else {
-      await this.usersService.activate(id);
-    }
-    const updated = await this.usersService.findById(id);
-    if (!updated) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
-    return updated;
+    return this.usersService.update(id, dto, callerId);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @RequirePermission('can_manage_users')
+  @ApiOperation({
+    summary: 'Hard-delete user and transfer scenarios (admin only)',
+    description: 'Requires: can_manage_users',
+  })
+  @ApiResponse({ status: 204, description: 'User deleted' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request — self-lockout guard',
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden — requires can_manage_users permission',
+  })
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') callerId: string,
+  ): Promise<void> {
+    return this.usersService.remove(id, callerId);
   }
 }
