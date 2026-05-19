@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { NO_PERMISSIONS } from '../common/types/permission';
 import { User } from './entities/user.entity';
@@ -33,8 +37,8 @@ describe('UsersController', () => {
     findByEmail: jest.fn(),
     findById: jest.fn(),
     create: jest.fn(),
-    deactivate: jest.fn(),
-    activate: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -92,69 +96,93 @@ describe('UsersController', () => {
     });
   });
 
-  describe('PATCH /users/:id/toggle-status', () => {
-    it('should deactivate an active user', async () => {
-      const activeUser = { ...mockUser, isActive: true };
-      const deactivatedUser = { ...mockUser, isActive: false };
-      mockUsersService.findById
-        .mockResolvedValueOnce(activeUser)
-        .mockResolvedValueOnce(deactivatedUser);
-      mockUsersService.deactivate.mockResolvedValue(undefined);
+  describe('PATCH /users/:id', () => {
+    const VICTIM_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    const CALLER_ID = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
 
-      const currentUser = {
-        id: 'other-user-uuid',
-        email: 'other@nemea.com',
-        permissions: NO_PERMISSIONS,
-      };
-      const result = await controller.toggleStatus(
-        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        currentUser,
-      );
+    it('forwards id, dto, callerId to service.update and returns updated user', async () => {
+      const dto = { name: 'Nuevo' };
+      const updatedUser = { ...mockUser, name: 'Nuevo' };
+      mockUsersService.update.mockResolvedValue(updatedUser);
 
-      expect(result).toEqual(deactivatedUser);
-      expect(usersService.deactivate).toHaveBeenCalledWith(
-        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      const result = await controller.update(VICTIM_ID, dto, CALLER_ID);
+
+      expect(result).toEqual(updatedUser);
+      expect(usersService.update).toHaveBeenCalledWith(
+        VICTIM_ID,
+        dto,
+        CALLER_ID,
       );
     });
 
-    it('should activate an inactive user', async () => {
-      const inactiveUser = { ...mockUser, isActive: false };
-      const activatedUser = { ...mockUser, isActive: true };
-      mockUsersService.findById
-        .mockResolvedValueOnce(inactiveUser)
-        .mockResolvedValueOnce(activatedUser);
-      mockUsersService.activate.mockResolvedValue(undefined);
-
-      const currentUser = {
-        id: 'other-user-uuid',
-        email: 'other@nemea.com',
-        permissions: NO_PERMISSIONS,
-      };
-      const result = await controller.toggleStatus(
-        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        currentUser,
+    it('propagates BadRequestException from service (self-role-edit guard)', async () => {
+      mockUsersService.update.mockRejectedValue(
+        new BadRequestException('No puedes cambiar tu propio rol'),
       );
 
-      expect(result).toEqual(activatedUser);
-      expect(usersService.activate).toHaveBeenCalledWith(
-        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-      );
-    });
-
-    it('should throw NotFoundException for non-existent user', async () => {
-      mockUsersService.findById.mockResolvedValue(null);
-
-      const currentUser = {
-        id: 'other-user-uuid',
-        email: 'other@nemea.com',
-        permissions: NO_PERMISSIONS,
-      };
       await expect(
-        controller.toggleStatus(
-          'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-          currentUser,
+        controller.update(
+          CALLER_ID,
+          { roleId: 'd4e5f6a7-b8c9-0123-def1-234567890123' },
+          CALLER_ID,
         ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('propagates NotFoundException from service when user does not exist', async () => {
+      mockUsersService.update.mockRejectedValue(
+        new NotFoundException('Usuario no encontrado'),
+      );
+
+      await expect(
+        controller.update(VICTIM_ID, { name: 'X' }, CALLER_ID),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('DELETE /users/:id', () => {
+    const VICTIM_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    const CALLER_ID = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
+
+    it('forwards id and callerId to service.remove and returns void', async () => {
+      mockUsersService.remove.mockResolvedValue(undefined);
+
+      const result = await controller.remove(VICTIM_ID, CALLER_ID);
+
+      expect(result).toBeUndefined();
+      expect(usersService.remove).toHaveBeenCalledWith(VICTIM_ID, CALLER_ID);
+    });
+
+    it('propagates BadRequestException (self-delete) from service', async () => {
+      mockUsersService.remove.mockRejectedValue(
+        new BadRequestException('No puedes borrarte a vos mismo'),
+      );
+
+      await expect(controller.remove(CALLER_ID, CALLER_ID)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('propagates BadRequestException (last-admin) from service', async () => {
+      mockUsersService.remove.mockRejectedValue(
+        new BadRequestException(
+          'No se puede dejar el sistema sin administradores activos',
+        ),
+      );
+
+      await expect(controller.remove(VICTIM_ID, CALLER_ID)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('propagates NotFoundException from service when user does not exist', async () => {
+      mockUsersService.remove.mockRejectedValue(
+        new NotFoundException('Usuario no encontrado'),
+      );
+
+      await expect(controller.remove(VICTIM_ID, CALLER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });
