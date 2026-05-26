@@ -172,11 +172,9 @@ describe('UsersService admin-guard integration (real Postgres)', () => {
     // Pre-fix: FOR UPDATE + COUNT → QueryFailedError 500
     // Post-fix: plain COUNT → resolves to 1+ → no BadRequestException
     const secondAdmin = await createTestUser('admin2', adminRole, true);
-    // caller is the seed admin (any active admin); we use secondAdmin as
-    // the caller since we only need a valid distinct ID. Use seed admin
-    // as victim to keep the test self-contained — but actually we want
-    // to demote secondAdmin (not the seed admin) to avoid triggering
-    // the last-admin guard.
+    // Demote the test admin (victim) with the seed admin as caller; both are
+    // active so the last-admin guard must NOT fire — this exercises
+    // countOtherActiveAdmins against real SQL.
     const seedAdmin = await userRepo.findOneOrFail({
       where: { email: SEED_ADMIN_EMAIL },
     });
