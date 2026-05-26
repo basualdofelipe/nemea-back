@@ -101,6 +101,19 @@ describe('UsersService admin-guard integration (real Postgres)', () => {
   });
 
   /**
+   * WR-04: defensively reactivate the seed admin before every test so the
+   * suite self-heals against a predecessor run that crashed between Test 2's
+   * deactivation and its afterEach restore. Without this, a long-lived shared
+   * test DB could start a run with the real admin deactivated.
+   */
+  beforeEach(async () => {
+    await dataSource.query(
+      `UPDATE users SET is_active = true WHERE email = $1`,
+      [SEED_ADMIN_EMAIL],
+    );
+  });
+
+  /**
    * Delete all test-prefixed rows after each test to isolate runs.
    * Order: scenarios → users (FK: scenarios.user_id → users.id).
    * The seed admin (basualdofelipe@gmail.com) is never deleted here.
