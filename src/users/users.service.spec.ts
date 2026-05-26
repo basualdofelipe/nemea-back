@@ -598,5 +598,33 @@ describe('UsersService', () => {
       expect(mockQueryRunner.manager.delete).not.toHaveBeenCalled();
       expect(mockQueryRunner.release).toHaveBeenCalled();
     });
+
+    it('rollbackea cuando manager.delete falla (revierte transferOwnership UPDATE) (WR-10)', async () => {
+      const victim = {
+        ...mockUser,
+        id: VICTIM_ID,
+        name: 'V',
+        role: editorRole,
+        isActive: false,
+      };
+      mockRepository.findOne.mockResolvedValue(victim);
+      mockScenariosService.transferOwnership.mockResolvedValue(undefined);
+      mockQueryRunner.manager.delete.mockRejectedValue(
+        new Error('fk violation'),
+      );
+
+      await expect(service.remove(VICTIM_ID, CALLER_ID)).rejects.toThrow(
+        'fk violation',
+      );
+
+      expect(mockScenariosService.transferOwnership).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+        User,
+        VICTIM_ID,
+      );
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
   });
 });
