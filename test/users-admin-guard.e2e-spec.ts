@@ -181,13 +181,13 @@ describe('UsersService admin-guard integration (real Postgres)', () => {
 
     // Demote secondAdmin to editor (caller = seedAdmin.id)
     // This goes through countOtherActiveAdmins with real SQL.
-    await expect(
-      usersService.update(
-        secondAdmin.id,
-        { roleId: editorRole.id },
-        seedAdmin.id,
-      ),
-    ).resolves.not.toThrow();
+    const updated = await usersService.update(
+      secondAdmin.id,
+      { roleId: editorRole.id },
+      seedAdmin.id,
+    );
+    expect(updated.role.id).toBe(editorRole.id);
+    expect(updated.role.canManageUsers).toBe(false);
   }, 30000);
 
   // ─────────────────────────────────────────────────────────────────
