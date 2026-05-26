@@ -6,6 +6,7 @@ import {
   ParsedInstallmentRate,
   ParsedPlan,
 } from '../tiendanube-config/tiendanube-config.service';
+import { TN_GATEWAY_PAGO_NUBE } from '../constants/tiendanube';
 import { CostsService } from '../costs/costs.service';
 import { ProductsService } from '../products/products.service';
 import {
@@ -113,7 +114,9 @@ export class CalculadoraService {
 
     // CPT depends on gateway: pago_nube uses cptPagoNube, others use cptOtherGateways
     const cptRate =
-      gatewaySlug === 'pago_nube' ? plan.cptPagoNube : plan.cptOtherGateways;
+      gatewaySlug === TN_GATEWAY_PAGO_NUBE
+        ? plan.cptPagoNube
+        : plan.cptOtherGateways;
 
     // IVA/IIBB stored as percentages (21, 3.5), formulas need fractions (0.21, 0.035)
     return {

@@ -23,6 +23,11 @@ import { User } from '../users/entities/user.entity';
 import { TnPlan } from '../tiendanube-config/entities/tn-plan.entity';
 import { Product } from '../products/entities/product.entity';
 import { CalcResult } from '../calculadora/dto/calc-result.dto';
+import {
+  TN_GATEWAY_PAGO_NUBE,
+  TN_PAYMENT_TARJETA,
+  TN_PLAN_ESENCIAL,
+} from '../constants/tiendanube';
 
 @Injectable()
 export class ScenariosService {
@@ -273,11 +278,11 @@ export class ScenariosService {
     );
 
     // Resolve scenario gateway config (use defaults if null)
-    const gatewaySlug = scenario.gatewaySlug ?? 'pago_nube';
-    const paymentMethod = scenario.paymentMethod ?? 'tarjeta_debito_credito';
+    const gatewaySlug = scenario.gatewaySlug ?? TN_GATEWAY_PAGO_NUBE;
+    const paymentMethod = scenario.paymentMethod ?? TN_PAYMENT_TARJETA;
     const withdrawalDays = scenario.withdrawalDays ?? 1;
     const installments = scenario.installments ?? 1;
-    const planSlug = scenario.plan?.slug ?? 'esencial';
+    const planSlug = scenario.plan?.slug ?? TN_PLAN_ESENCIAL;
 
     const results: ScenarioProductResult[] = [];
 
