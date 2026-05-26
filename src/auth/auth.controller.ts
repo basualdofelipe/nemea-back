@@ -19,6 +19,7 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import type { JwtUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { DemoLoginDto } from './dto/demo-login.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 
 @ApiTags('auth')
@@ -42,6 +43,23 @@ export class AuthController {
   })
   async googleLogin(@Body() dto: GoogleAuthDto): Promise<AuthResponseDto> {
     return this.authService.validateGoogleToken(dto.idToken);
+  }
+
+  @Post('demo-login')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Exchange demo email for backend JWT (env-gated)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Demo login successful',
+    type: AuthResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Demo login disabled or user not found',
+  })
+  async demoLogin(@Body() dto: DemoLoginDto): Promise<AuthResponseDto> {
+    return this.authService.validateDemoLogin(dto.email);
   }
 
   @Get('me')
