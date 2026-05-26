@@ -487,6 +487,72 @@ describe('UsersService', () => {
       ).not.toHaveBeenCalled();
     });
 
+    it('cuando victim.name === "" usa fallback "usuario borrado" en el suffix (CR-02)', async () => {
+      const victim = {
+        ...mockUser,
+        id: VICTIM_ID,
+        name: '',
+        role: editorRole,
+        isActive: false,
+      };
+      mockRepository.findOne.mockResolvedValue(victim);
+      mockScenariosService.transferOwnership.mockResolvedValue(undefined);
+      mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
+
+      await service.remove(VICTIM_ID, CALLER_ID);
+
+      expect(mockScenariosService.transferOwnership).toHaveBeenCalledWith(
+        VICTIM_ID,
+        CALLER_ID,
+        ' - usuario borrado',
+        mockQueryRunner,
+      );
+    });
+
+    it('cuando victim.name === "   " (whitespace) usa fallback "usuario borrado" en el suffix (CR-02)', async () => {
+      const victim = {
+        ...mockUser,
+        id: VICTIM_ID,
+        name: '   ',
+        role: editorRole,
+        isActive: false,
+      };
+      mockRepository.findOne.mockResolvedValue(victim);
+      mockScenariosService.transferOwnership.mockResolvedValue(undefined);
+      mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
+
+      await service.remove(VICTIM_ID, CALLER_ID);
+
+      expect(mockScenariosService.transferOwnership).toHaveBeenCalledWith(
+        VICTIM_ID,
+        CALLER_ID,
+        ' - usuario borrado',
+        mockQueryRunner,
+      );
+    });
+
+    it('cuando victim.name tiene whitespace al borde lo trimmea en el suffix (CR-02)', async () => {
+      const victim = {
+        ...mockUser,
+        id: VICTIM_ID,
+        name: '  Juan  ',
+        role: editorRole,
+        isActive: false,
+      };
+      mockRepository.findOne.mockResolvedValue(victim);
+      mockScenariosService.transferOwnership.mockResolvedValue(undefined);
+      mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
+
+      await service.remove(VICTIM_ID, CALLER_ID);
+
+      expect(mockScenariosService.transferOwnership).toHaveBeenCalledWith(
+        VICTIM_ID,
+        CALLER_ID,
+        ' - Juan',
+        mockQueryRunner,
+      );
+    });
+
     it('rollbackea cuando transferOwnership falla', async () => {
       const victim = {
         ...mockUser,

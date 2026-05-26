@@ -189,7 +189,11 @@ export class UsersService {
     await queryRunner.startTransaction();
 
     try {
-      const suffix = ` - ${victim.name ?? 'usuario borrado'}`;
+      // Defensive: victim.name can be '' or whitespace (frontend may submit
+      // empty string). ?? only fires on null/undefined, so trim first and fall
+      // back to 'usuario borrado' for any falsy/whitespace value.
+      const trimmedName = victim.name?.trim();
+      const suffix = ` - ${trimmedName ? trimmedName : 'usuario borrado'}`;
       await this.scenariosService.transferOwnership(
         id,
         callerId,
