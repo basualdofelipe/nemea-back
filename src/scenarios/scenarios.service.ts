@@ -393,10 +393,10 @@ export class ScenariosService {
     suffix: string,
     qr: QueryRunner,
   ): Promise<void> {
-    // WR-A7: truncate the BASE name to (200 - suffix.length) BEFORE
+    // Truncate the BASE name to (200 - suffix.length) BEFORE
     // concatenation so the discriminator (` - <name> #<shortId>`) is never
     // cut by the final LEFT(..., 200). Otherwise two scenarios whose names
-    // share a long prefix can collide after truncation, defeating WR-01.
+    // share a long prefix can collide after truncation.
     //
     // suffix.length is known at JS time and clamped here defensively: if the
     // suffix would itself overflow 200 chars (impossible with the current
@@ -410,14 +410,10 @@ export class ScenariosService {
     }
     const baseMax = 200 - suffix.length;
 
-    // WR-A8 (corrected for UAT Test 6 gap closure): use the PROPERTY name
-    // `updatedAt` (not the column name `updated_at`) in the .set() object.
+    // Use the PROPERTY name `updatedAt` (not the column name `updated_at`) in the .set() object.
     // TypeORM QueryBuilder .set() resolves keys by entity PROPERTY names and
-    // throws EntityPropertyNotFoundError if it receives the column name —
-    // `updated_at` is the DB column, `updatedAt` is the @UpdateDateColumn
-    // property on BaseEntity. Using `updated_at` caused a 500 ROLLBACK on
-    // every delete-with-transfer call. The expression `() => 'NOW()'` (raw SQL)
-    // is preserved so the bulk UPDATE bypasses the @UpdateDateColumn subscriber
+    // throws EntityPropertyNotFoundError if it receives the column name.
+    // The expression `() => 'NOW()'` (raw SQL) bypasses the @UpdateDateColumn subscriber
     // (which only fires through repo.save / manager.save, not execute()).
     await qr.manager
       .createQueryBuilder()

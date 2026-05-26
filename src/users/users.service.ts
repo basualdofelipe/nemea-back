@@ -64,9 +64,8 @@ export class UsersService {
       name: dto.name,
       role: dto.roleId ? ({ id: dto.roleId } as Role) : undefined,
     });
-    // WR-A4: catch the @Unique(['email']) constraint violation here and
-    // surface it as 409 ConflictException. The controller's pre-check
-    // (findByEmail before create) is a TOCTOU race -- under concurrent
+    // Catch the @Unique(['email']) constraint violation and surface it as 409 ConflictException.
+    // The controller's pre-check (findByEmail before create) is a TOCTOU race -- under concurrent
     // POST /users with the same email both requests pass the pre-check,
     // both call create(), and the loser gets a raw 500 instead of 409.
     // Catching the DB constraint guarantees the right status code
@@ -125,7 +124,7 @@ export class UsersService {
     dto: UpdateUserDto,
     callerId: string,
   ): Promise<User> {
-    // WR-A2: explicit guard — roleId null bypasses @IsUUID + @IsOptional
+    // Explicit guard — roleId null bypasses @IsUUID + @IsOptional
     // upstream, so the DTO can arrive with roleId === null. Reject it here
     // before any DB I/O instead of producing the misleading
     // "No puedes cambiar tu propio rol" further down.
@@ -133,7 +132,7 @@ export class UsersService {
       throw new BadRequestException('roleId no puede ser null');
     }
 
-    // CR-A1 + CR-A2: wrap the entire read → guard → write sequence in a
+    // Wrap the entire read → guard → write sequence in a
     // SERIALIZABLE transaction with a pessimistic_write lock on the victim
     // row (and on the admin rows the guard reads). This closes the TOCTOU
     // window where two concurrent demote/delete requests could both pass
@@ -170,7 +169,7 @@ export class UsersService {
         throw new BadRequestException('No puedes cambiar tu propio rol');
       }
 
-      // Guard 2: self-deactivate (WR-A1: idempotent — only block when this
+      // Guard 2: self-deactivate (idempotent — only block when this
       // PATCH would actually change isActive from true → false).
       if (
         id === callerId &&
@@ -215,7 +214,7 @@ export class UsersService {
       if (dto.name !== undefined) {
         victim.name = dto.name;
       }
-      // IN-A1: only mutate role when it actually changed. Reassigning the
+      // Only mutate role when it actually changed. Reassigning the
       // same role makes TypeORM emit the FK in the UPDATE and bumps
       // updated_at for no reason.
       if (dto.roleId !== undefined && dto.roleId !== victimRoleId && newRole) {
@@ -230,7 +229,7 @@ export class UsersService {
       return saved;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      // WR-01: SERIALIZABLE serializes the last-admin guard by ABORTING the
+      // SERIALIZABLE serializes the last-admin guard by ABORTING the
       // losing txn with serialization_failure (40001), not by blocking. Map
       // that raw QueryFailedError to a clean 409 instead of letting it surface
       // as an opaque 500. Mirrors the 23505 handling in create().
@@ -249,9 +248,9 @@ export class UsersService {
   }
 
   async remove(id: string, callerId: string): Promise<void> {
-    // CR-A1: wrap the entire read → guard → transfer → delete sequence in a
+    // Wrap the entire read → guard → transfer → delete sequence in a
     // SERIALIZABLE transaction with pessimistic_write locks. The self-delete
-    // check (WR-A3) moves AFTER the existence check so a caller whose own
+    // check moves AFTER the existence check so a caller whose own
     // row was concurrently deleted gets a clean 404 instead of "No puedes
     // borrarte a vos mismo".
     const queryRunner =
@@ -271,7 +270,7 @@ export class UsersService {
         throw new NotFoundException('Usuario no encontrado');
       }
 
-      // WR-A3: self-delete check AFTER existence check (mirrors update()
+      // Self-delete check AFTER existence check (mirrors update()
       // ordering and avoids misleading messages when the caller's own row
       // was concurrently deleted by another admin).
       if (id === callerId) {
@@ -302,7 +301,7 @@ export class UsersService {
       // back to 'usuario borrado' for any falsy/whitespace value.
       const trimmedName = victim.name?.trim();
       const baseLabel = trimmedName ? trimmedName : 'usuario borrado';
-      // WR-01: include a short slice of the victim's UUID in the suffix so
+      // Include a short slice of the victim's UUID in the suffix so
       // bulk-renamed scenarios stay unique against the caller's existing
       // scenarios (the (user_id, name) constraint is enforced in code only,
       // and two victims with the same name would collide otherwise).
@@ -318,7 +317,7 @@ export class UsersService {
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      // WR-01: SERIALIZABLE serializes the last-admin guard by ABORTING the
+      // SERIALIZABLE serializes the last-admin guard by ABORTING the
       // losing txn with serialization_failure (40001), not by blocking. Map
       // that raw QueryFailedError to a clean 409 instead of letting it surface
       // as an opaque 500. Mirrors the 23505 handling in create().

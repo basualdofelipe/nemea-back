@@ -408,7 +408,7 @@ describe('ScenariosService', () => {
     });
 
     it('ejecuta el UPDATE incluso cuando victim no tiene scenarios (idempotent: affected=0 no rompe)', async () => {
-      // WR-07: the implementation always runs the bulk UPDATE; when the
+      // The implementation always runs the bulk UPDATE; when the
       // victim has zero scenarios, execute() returns affected=0 and the
       // method resolves to undefined (no error). This test does not assert
       // any "skip the query" optimization -- it asserts that a zero-rows

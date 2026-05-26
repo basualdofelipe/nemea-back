@@ -17,7 +17,7 @@ export class UpdateUserDto {
   })
   // ValidateIf skips IsString + MaxLength when the value is explicitly null,
   // allowing the frontend to clear the name. Omitted (undefined) is also
-  // allowed by IsOptional. WR-06: accept null; WR-08: enforce DB length.
+  // allowed by IsOptional.
   @ValidateIf((_, value) => value !== null)
   @IsString()
   @MaxLength(255, { message: 'El nombre no puede superar los 255 caracteres' })
@@ -25,7 +25,7 @@ export class UpdateUserDto {
   name?: string | null;
 
   @ApiProperty({ required: false, description: 'UUID del rol a asignar' })
-  // WR-A2: @IsOptional() skips validation for null AND undefined, which lets
+  // @IsOptional() skips validation for null AND undefined, which lets
   // { roleId: null } slip through to the service where it produced a
   // misleading "No puedes cambiar tu propio rol" error. ValidateIf rejects
   // explicit null at the validation layer, mirroring the same pattern used

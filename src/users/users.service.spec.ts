@@ -743,7 +743,7 @@ describe('UsersService', () => {
       );
     });
 
-    it('incluye un slice corto del UUID de victim en el suffix para evitar colisiones (WR-01)', async () => {
+    it('incluye un slice corto del UUID de victim en el suffix para evitar colisiones', async () => {
       const victim = {
         ...mockUser,
         id: VICTIM_ID,
@@ -789,7 +789,7 @@ describe('UsersService', () => {
       expect(mockQueryRunner.release).toHaveBeenCalled();
     });
 
-    it('rollbackea cuando manager.delete falla (revierte transferOwnership UPDATE) (WR-10)', async () => {
+    it('rollbackea cuando manager.delete falla (revierte transferOwnership UPDATE)', async () => {
       const victim = {
         ...mockUser,
         id: VICTIM_ID,
