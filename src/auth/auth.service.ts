@@ -65,6 +65,36 @@ export class AuthService {
     return this.usersService.findById(userId);
   }
 
+  async validateDemoLogin(email: string): Promise<AuthResponseDto> {
+    const enabled = this.configService.get<string>('DEMO_LOGIN_ENABLED');
+    if (enabled !== 'true') {
+      throw new UnauthorizedException('Demo login no disponible');
+    }
+
+    const user = await this.usersService.findActiveByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('Usuario demo no encontrado');
+    }
+
+    const permissions = extractPermissions(user.role);
+    const accessToken = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+      permissions,
+    });
+
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        permissions,
+        name: user.name ?? null,
+        pictureUrl: user.pictureUrl ?? null,
+      },
+    };
+  }
+
   private async verifyGoogleIdToken(
     idToken: string,
   ): Promise<TokenPayload | undefined> {
