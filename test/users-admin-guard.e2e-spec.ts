@@ -229,17 +229,16 @@ describe('UsersService admin-guard integration (real Postgres)', () => {
       true,
     );
 
-    // Deactivating the last active admin must throw BadRequestException,
-    // not QueryFailedError (the pre-fix behavior was a 500 SQL crash).
-    await expect(
-      usersService.update(lastAdmin.id, { isActive: false }, callerEditor.id),
-    ).rejects.toThrow(BadRequestException);
-
-    // Extra assertion: the message must be the last-admin guard, not the SQL error
+    // Deactivating the last active admin must throw BadRequestException with
+    // the last-admin guard message, not a QueryFailedError (the pre-fix
+    // behavior was a 500 SQL crash). A single invocation asserts both the
+    // type and the message in one transactional round-trip.
     await expect(
       usersService.update(lastAdmin.id, { isActive: false }, callerEditor.id),
     ).rejects.toThrow(
-      'No se puede dejar el sistema sin administradores activos',
+      new BadRequestException(
+        'No se puede dejar el sistema sin administradores activos',
+      ),
     );
   }, 30000);
 
