@@ -1,11 +1,28 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsBoolean,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  ValidateIf,
+} from 'class-validator';
 
 export class UpdateUserDto {
-  @ApiProperty({ required: false, description: 'Nombre del usuario' })
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    maxLength: 255,
+    description: 'Nombre del usuario (null para limpiar)',
+  })
+  // ValidateIf skips IsString + MaxLength when the value is explicitly null,
+  // allowing the frontend to clear the name. Omitted (undefined) is also
+  // allowed by IsOptional. WR-06: accept null; WR-08: enforce DB length.
+  @ValidateIf((_, value) => value !== null)
   @IsString()
+  @MaxLength(255, { message: 'El nombre no puede superar los 255 caracteres' })
   @IsOptional()
-  name?: string;
+  name?: string | null;
 
   @ApiProperty({ required: false, description: 'UUID del rol a asignar' })
   @IsUUID()
