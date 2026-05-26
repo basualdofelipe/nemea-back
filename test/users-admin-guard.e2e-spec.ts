@@ -287,9 +287,10 @@ describe('UsersService admin-guard integration (real Postgres)', () => {
     expect(transferred!.name).toContain(suffix);
 
     // (d) updatedAt was bumped by the bulk UPDATE's NOW()
-    // The new updatedAt must be >= the original (and ideally > it, though
-    // clock resolution may make them equal in extremely fast environments).
-    expect(transferred!.updatedAt.getTime()).toBeGreaterThanOrEqual(
+    // Assert a STRICT increase: with the 10ms pre-delay and timestamptz
+    // microsecond resolution, removing the NOW() bump leaves updatedAt equal
+    // to the original, which `>` correctly fails on.
+    expect(transferred!.updatedAt.getTime()).toBeGreaterThan(
       originalUpdatedAt.getTime(),
     );
   }, 30000);
