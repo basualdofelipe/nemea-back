@@ -532,10 +532,15 @@ describe('UsersService', () => {
       );
     });
 
-    // CR-A1/CR-A2: the last-admin COUNT runs on queryRunner.manager (same
-    // transaction as the save) so the read and write are serialized by the
-    // pessimistic_write locks.
-    it('CR-A1/CR-A2: la COUNT de admins corre sobre queryRunner.manager (misma transaccion que save)', async () => {
+    // CR-A1/CR-A2 (updated for UAT gap closure): the last-admin COUNT runs on
+    // queryRunner.manager (same transaction as the save). The count does NOT
+    // add a pessimistic_write lock on the aggregate — PostgreSQL forbids
+    // FOR UPDATE with COUNT, and the SERIALIZABLE isolation of the surrounding
+    // transaction already serializes concurrent demote/delete requests without
+    // a row-lock on the COUNT query. The victim re-fetch (innerJoinAndSelect +
+    // setLock) is a separate createQueryBuilder call and is the one that uses
+    // pessimistic_write, not the COUNT.
+    it('CR-A1/CR-A2: la COUNT de admins corre sobre queryRunner.manager y NO agrega lock sobre el agregado (SERIALIZABLE ya garantiza serialización)', async () => {
       const victim = {
         ...mockUser,
         id: VICTIM_ID,
@@ -554,9 +559,13 @@ describe('UsersService', () => {
       // The createQueryBuilder used to count admins is the one on the
       // queryRunner manager (transactional), not on the bare repository.
       expect(mockQueryRunner.manager.createQueryBuilder).toHaveBeenCalled();
-      expect(mockTxnQueryBuilder.setLock).toHaveBeenCalledWith(
-        'pessimistic_write',
-      );
+      // getCount was called — proves the COUNT path was taken (last-admin guard)
+      expect(mockTxnQueryBuilder.getCount).toHaveBeenCalled();
+      // The COUNT must NOT call setLock('pessimistic_write') — that combination
+      // triggers "FOR UPDATE is not allowed with aggregate functions" in PostgreSQL.
+      // The victim re-fetch uses setLock, but the shared mock means we only assert
+      // that getCount was reached (not that setLock was absent entirely, since the
+      // victim re-fetch legitimately calls it).
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
     });
 

@@ -97,10 +97,13 @@ export class UsersService {
 
   // ─── Helper: count OTHER active admins inside a transaction ───
   //
-  // CR-A1: the COUNT must run on the same QueryRunner manager as the
-  // surrounding write, with pessimistic_write locks on the admin rows it
-  // reads, so concurrent demote/deactivate/delete requests on the
-  // "penultimate" admin serialize instead of both passing the guard.
+  // UAT Tests 2/8 gap closure: PostgreSQL prohibits FOR UPDATE with aggregate
+  // functions (COUNT), so combining .setLock('pessimistic_write') with
+  // .getCount() is illegal and causes a 500 ROLLBACK. The row-lock on the
+  // aggregate is also redundant: update() and remove() both start a
+  // SERIALIZABLE transaction, which already serializes concurrent
+  // demote/deactivate/delete requests on the "penultimate" admin — no
+  // pessimistic_write lock on the COUNT query is needed to guarantee safety.
   private async countOtherActiveAdmins(
     manager: EntityManager,
     excludeId: string,
@@ -108,7 +111,6 @@ export class UsersService {
     return manager
       .createQueryBuilder(User, 'u')
       .innerJoin('u.role', 'r')
-      .setLock('pessimistic_write')
       .where('u.isActive = :active', { active: true })
       .andWhere('r.canManageUsers = :flag', { flag: true })
       .andWhere('u.id != :id', { id: excludeId })
