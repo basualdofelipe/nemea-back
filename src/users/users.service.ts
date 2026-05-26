@@ -104,6 +104,9 @@ export class UsersService {
   // SERIALIZABLE transaction, which already serializes concurrent
   // demote/deactivate/delete requests on the "penultimate" admin — no
   // pessimistic_write lock on the COUNT query is needed to guarantee safety.
+  // Note: SERIALIZABLE enforces this by raising serialization_failure (40001)
+  // on the losing txn; callers must map/retry that — see error handling in
+  // update()/remove(), which maps 40001 to a 409 ConflictException.
   private async countOtherActiveAdmins(
     manager: EntityManager,
     excludeId: string,
