@@ -227,6 +227,18 @@ export class UsersService {
       return saved;
     } catch (error) {
       await queryRunner.rollbackTransaction();
+      // WR-01: SERIALIZABLE serializes the last-admin guard by ABORTING the
+      // losing txn with serialization_failure (40001), not by blocking. Map
+      // that raw QueryFailedError to a clean 409 instead of letting it surface
+      // as an opaque 500. Mirrors the 23505 handling in create().
+      if (
+        error instanceof QueryFailedError &&
+        (error as QueryFailedError & { code?: string }).code === '40001'
+      ) {
+        throw new ConflictException(
+          'Operación concurrente detectada, reintentá la acción',
+        );
+      }
       throw error;
     } finally {
       await queryRunner.release();
@@ -303,6 +315,18 @@ export class UsersService {
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
+      // WR-01: SERIALIZABLE serializes the last-admin guard by ABORTING the
+      // losing txn with serialization_failure (40001), not by blocking. Map
+      // that raw QueryFailedError to a clean 409 instead of letting it surface
+      // as an opaque 500. Mirrors the 23505 handling in create().
+      if (
+        error instanceof QueryFailedError &&
+        (error as QueryFailedError & { code?: string }).code === '40001'
+      ) {
+        throw new ConflictException(
+          'Operación concurrente detectada, reintentá la acción',
+        );
+      }
       throw error;
     } finally {
       await queryRunner.release();
