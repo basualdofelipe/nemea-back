@@ -82,11 +82,17 @@ export class UsersService {
       throw new NotFoundException('Usuario no encontrado');
     }
 
+    // Defensive: User.role is technically nullable at the DB layer (the
+    // @ManyToOne decorator does not enforce non-null in TypeORM). Null-coalesce
+    // the id and permission lookups so a user without a role does not crash
+    // with TypeError -- callers get well-formed 400/404 responses instead.
+    const victimRoleId = victim.role?.id ?? null;
+
     // Guard 1: self-role-edit
     if (
       id === callerId &&
       dto.roleId !== undefined &&
-      dto.roleId !== victim.role.id
+      dto.roleId !== victimRoleId
     ) {
       throw new BadRequestException('No puedes cambiar tu propio rol');
     }
@@ -97,8 +103,8 @@ export class UsersService {
     }
 
     // Resolve new role if changed
-    let newRole = victim.role;
-    if (dto.roleId !== undefined && dto.roleId !== victim.role.id) {
+    let newRole: Role | null = victim.role ?? null;
+    if (dto.roleId !== undefined && dto.roleId !== victimRoleId) {
       const found = await this.roleRepository.findOne({
         where: { id: dto.roleId },
       });
@@ -110,8 +116,9 @@ export class UsersService {
 
     // Guard 3: last-active-admin (computed after candidate write)
     const willBeActive = dto.isActive ?? victim.isActive;
-    const willBeAdmin = newRole.canManageUsers;
-    const wasAdminActive = victim.isActive && victim.role.canManageUsers;
+    const willBeAdmin = newRole?.canManageUsers ?? false;
+    const wasAdminActive =
+      victim.isActive && (victim.role?.canManageUsers ?? false);
     const willNoLongerBeAdminActive =
       wasAdminActive && !(willBeActive && willBeAdmin);
     if (willNoLongerBeAdminActive) {
@@ -133,7 +140,12 @@ export class UsersService {
     if (dto.name !== undefined) {
       victim.name = dto.name;
     }
-    victim.role = newRole;
+    // Only mutate role when a new one was resolved; never assign null over
+    // an existing role (the User.role column is required at the type level
+    // even though the DB column is nullable -- preserve current behavior).
+    if (newRole) {
+      victim.role = newRole;
+    }
     if (dto.isActive !== undefined) {
       victim.isActive = dto.isActive;
     }
@@ -152,8 +164,8 @@ export class UsersService {
       throw new NotFoundException('Usuario no encontrado');
     }
 
-    // Guard 2: last-active-admin
-    if (victim.isActive && victim.role.canManageUsers) {
+    // Guard 2: last-active-admin (null-safe on victim.role)
+    if (victim.isActive && (victim.role?.canManageUsers ?? false)) {
       const otherActiveAdmins = await this.usersRepository
         .createQueryBuilder('u')
         .innerJoin('u.role', 'r')
