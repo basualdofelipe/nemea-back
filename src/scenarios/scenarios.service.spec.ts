@@ -340,14 +340,19 @@ describe('ScenariosService', () => {
       );
 
       expect(mockUpdateBuilder.update).toHaveBeenCalledWith(Scenario);
-      // WR-A8: assert that .set() includes an updated_at refresh, so the
-      // bulk UPDATE bumps updatedAt and the transferred scenarios surface
-      // at the top of the new owner's list (sorted by updatedAt DESC).
+      // WR-A8 (corrected for UAT Test 6 gap closure): assert that .set()
+      // includes `updatedAt` (PROPERTY name on BaseEntity), not `updated_at`
+      // (DB column name). TypeORM QueryBuilder .set() resolves by property name
+      // and throws EntityPropertyNotFoundError when given the column name.
+      // The value is a raw SQL arrow function (() => 'NOW()') so the bulk
+      // UPDATE bypasses the @UpdateDateColumn subscriber (which only fires via
+      // repo.save / manager.save) and the transferred scenarios surface at the
+      // top of the new owner's list (sorted by updatedAt DESC).
       expect(mockUpdateBuilder.set).toHaveBeenCalledWith(
         expect.objectContaining({
           name: expect.any(Function),
           user: { id: 'caller-uuid' },
-          updated_at: expect.any(Function),
+          updatedAt: expect.any(Function),
         }),
       );
       expect(mockUpdateBuilder.where).toHaveBeenCalledWith(

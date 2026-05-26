@@ -405,20 +405,22 @@ export class ScenariosService {
     }
     const baseMax = 200 - suffix.length;
 
-    // WR-A8: include updated_at: () => 'NOW()' so the bulk UPDATE bumps
-    // the timestamp. TypeORM's @UpdateDateColumn only fires through
-    // repository.save / manager.save -- a raw QueryBuilder.update().execute()
-    // skips entity subscribers. Without this, transferred scenarios keep
-    // their old updatedAt and appear at their previous position in the new
-    // owner's findAll (ordered by updatedAt DESC) instead of surfacing as
-    // recent activity.
+    // WR-A8 (corrected for UAT Test 6 gap closure): use the PROPERTY name
+    // `updatedAt` (not the column name `updated_at`) in the .set() object.
+    // TypeORM QueryBuilder .set() resolves keys by entity PROPERTY names and
+    // throws EntityPropertyNotFoundError if it receives the column name —
+    // `updated_at` is the DB column, `updatedAt` is the @UpdateDateColumn
+    // property on BaseEntity. Using `updated_at` caused a 500 ROLLBACK on
+    // every delete-with-transfer call. The expression `() => 'NOW()'` (raw SQL)
+    // is preserved so the bulk UPDATE bypasses the @UpdateDateColumn subscriber
+    // (which only fires through repo.save / manager.save, not execute()).
     await qr.manager
       .createQueryBuilder()
       .update(Scenario)
       .set({
         name: () => `LEFT(COALESCE(name, ''), ${baseMax}) || :suffix`,
         user: { id: newOwnerId },
-        updated_at: () => 'NOW()',
+        updatedAt: () => 'NOW()',
       })
       .where('user_id = :victimId', { victimId })
       .setParameter('suffix', suffix)
