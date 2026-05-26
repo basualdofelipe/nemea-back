@@ -1,6 +1,5 @@
 import {
   Body,
-  ConflictException,
   Controller,
   Delete,
   Get,
@@ -57,12 +56,11 @@ export class UsersController {
     description: 'Forbidden — requires can_manage_users permission',
   })
   async create(@Body() dto: CreateUserDto): Promise<User> {
-    const existing = await this.usersService.findByEmail(dto.email);
-
-    if (existing) {
-      throw new ConflictException('Email ya registrado');
-    }
-
+    // WR-A4: the email uniqueness check moved into UsersService.create
+    // where it catches the @Unique(['email']) DB constraint violation
+    // and re-throws as 409. The previous controller-level pre-check was
+    // a TOCTOU race: two concurrent POSTs with the same email could both
+    // pass findByEmail and the loser would get a raw 500.
     return this.usersService.create(dto);
   }
 

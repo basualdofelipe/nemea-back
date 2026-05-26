@@ -77,22 +77,25 @@ describe('UsersController', () => {
         ...dto,
         id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
       };
-      mockUsersService.findByEmail.mockResolvedValue(null);
       mockUsersService.create.mockResolvedValue(createdUser);
 
       const result = await controller.create(dto);
 
       expect(result).toEqual(createdUser);
-      expect(usersService.findByEmail).toHaveBeenCalledWith('new@nemea.com');
+      // WR-A4: controller no longer pre-checks via findByEmail. The
+      // service catches the @Unique(['email']) DB constraint and throws
+      // ConflictException itself, eliminating the TOCTOU race.
+      expect(usersService.findByEmail).not.toHaveBeenCalled();
       expect(usersService.create).toHaveBeenCalledWith(dto);
     });
 
-    it('should throw ConflictException for duplicate email', async () => {
+    it('should propagate ConflictException for duplicate email from service', async () => {
       const dto = { email: 'admin@nemea.com', roleId: 'role-uuid-1' };
-      mockUsersService.findByEmail.mockResolvedValue(mockUser);
+      mockUsersService.create.mockRejectedValue(
+        new ConflictException('Email ya registrado'),
+      );
 
       await expect(controller.create(dto)).rejects.toThrow(ConflictException);
-      expect(usersService.create).not.toHaveBeenCalled();
     });
   });
 

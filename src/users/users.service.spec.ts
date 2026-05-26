@@ -1,7 +1,11 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { Role } from '../roles/entities/role.entity';
 import { NO_PERMISSIONS } from '../common/types/permission';
 import { ScenariosService } from '../scenarios/scenarios.service';
@@ -200,6 +204,50 @@ describe('UsersService', () => {
         where: { id: ADMIN_ROLE_ID },
       });
       expect(repository.save).toHaveBeenCalledWith(createdUser);
+    });
+
+    // WR-A4: service catches the @Unique(['email']) DB constraint
+    // violation (Postgres code 23505) and re-throws as 409. This closes
+    // the TOCTOU window where two concurrent POSTs with the same email
+    // could both pass a pre-check and the loser would get a raw 500.
+    it('WR-A4: throws ConflictException cuando save lanza unique-violation 23505 (email duplicado)', async () => {
+      const dto = {
+        email: 'dup@user.com',
+        roleId: ADMIN_ROLE_ID,
+        name: 'Dup',
+      };
+      mockRoleRepository.findOne.mockResolvedValue(adminRole);
+      mockRepository.create.mockReturnValue({ ...mockUser, ...dto });
+      const uniqueError = new QueryFailedError(
+        'INSERT INTO users ...',
+        [],
+        new Error('duplicate'),
+      ) as QueryFailedError & { code?: string };
+      uniqueError.code = '23505';
+      mockRepository.save.mockRejectedValue(uniqueError);
+
+      await expect(service.create(dto)).rejects.toThrow(
+        new ConflictException('Email ya registrado'),
+      );
+    });
+
+    it('WR-A4: re-lanza otros errores de QueryFailedError sin envolverlos en ConflictException', async () => {
+      const dto = {
+        email: 'fk@user.com',
+        roleId: ADMIN_ROLE_ID,
+        name: 'FK',
+      };
+      mockRoleRepository.findOne.mockResolvedValue(adminRole);
+      mockRepository.create.mockReturnValue({ ...mockUser, ...dto });
+      const fkError = new QueryFailedError(
+        'INSERT INTO users ...',
+        [],
+        new Error('fk'),
+      ) as QueryFailedError & { code?: string };
+      fkError.code = '23503'; // foreign key violation
+      mockRepository.save.mockRejectedValue(fkError);
+
+      await expect(service.create(dto)).rejects.toThrow(QueryFailedError);
     });
   });
 

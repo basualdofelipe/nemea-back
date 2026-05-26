@@ -1,10 +1,16 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, QueryRunner, Repository } from 'typeorm';
+import {
+  EntityManager,
+  QueryFailedError,
+  QueryRunner,
+  Repository,
+} from 'typeorm';
 import { Role } from '../roles/entities/role.entity';
 import { ScenariosService } from '../scenarios/scenarios.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -58,7 +64,24 @@ export class UsersService {
       name: dto.name,
       role: dto.roleId ? ({ id: dto.roleId } as Role) : undefined,
     });
-    return this.usersRepository.save(user);
+    // WR-A4: catch the @Unique(['email']) constraint violation here and
+    // surface it as 409 ConflictException. The controller's pre-check
+    // (findByEmail before create) is a TOCTOU race -- under concurrent
+    // POST /users with the same email both requests pass the pre-check,
+    // both call create(), and the loser gets a raw 500 instead of 409.
+    // Catching the DB constraint guarantees the right status code
+    // regardless of timing. Pattern mirrors products.service.ts:149-159.
+    try {
+      return await this.usersRepository.save(user);
+    } catch (error) {
+      if (
+        error instanceof QueryFailedError &&
+        (error as QueryFailedError & { code?: string }).code === '23505'
+      ) {
+        throw new ConflictException('Email ya registrado');
+      }
+      throw error;
+    }
   }
 
   async updateGoogleProfile(
