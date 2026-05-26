@@ -193,7 +193,13 @@ export class UsersService {
       // empty string). ?? only fires on null/undefined, so trim first and fall
       // back to 'usuario borrado' for any falsy/whitespace value.
       const trimmedName = victim.name?.trim();
-      const suffix = ` - ${trimmedName ? trimmedName : 'usuario borrado'}`;
+      const baseLabel = trimmedName ? trimmedName : 'usuario borrado';
+      // WR-01: include a short slice of the victim's UUID in the suffix so
+      // bulk-renamed scenarios stay unique against the caller's existing
+      // scenarios (the (user_id, name) constraint is enforced in code only,
+      // and two victims with the same name would collide otherwise).
+      const shortId = id.slice(0, 8);
+      const suffix = ` - ${baseLabel} #${shortId}`;
       await this.scenariosService.transferOwnership(
         id,
         callerId,

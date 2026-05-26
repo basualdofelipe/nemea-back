@@ -504,7 +504,7 @@ describe('UsersService', () => {
       expect(mockScenariosService.transferOwnership).toHaveBeenCalledWith(
         VICTIM_ID,
         CALLER_ID,
-        ' - usuario borrado',
+        ` - usuario borrado #${VICTIM_ID.slice(0, 8)}`,
         mockQueryRunner,
       );
     });
@@ -526,7 +526,7 @@ describe('UsersService', () => {
       expect(mockScenariosService.transferOwnership).toHaveBeenCalledWith(
         VICTIM_ID,
         CALLER_ID,
-        ' - usuario borrado',
+        ` - usuario borrado #${VICTIM_ID.slice(0, 8)}`,
         mockQueryRunner,
       );
     });
@@ -548,7 +548,30 @@ describe('UsersService', () => {
       expect(mockScenariosService.transferOwnership).toHaveBeenCalledWith(
         VICTIM_ID,
         CALLER_ID,
-        ' - Juan',
+        ` - Juan #${VICTIM_ID.slice(0, 8)}`,
+        mockQueryRunner,
+      );
+    });
+
+    it('incluye un slice corto del UUID de victim en el suffix para evitar colisiones (WR-01)', async () => {
+      const victim = {
+        ...mockUser,
+        id: VICTIM_ID,
+        name: 'Maria',
+        role: editorRole,
+        isActive: false,
+      };
+      mockRepository.findOne.mockResolvedValue(victim);
+      mockScenariosService.transferOwnership.mockResolvedValue(undefined);
+      mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
+
+      await service.remove(VICTIM_ID, CALLER_ID);
+
+      const expectedSuffix = ` - Maria #${VICTIM_ID.slice(0, 8)}`;
+      expect(mockScenariosService.transferOwnership).toHaveBeenCalledWith(
+        VICTIM_ID,
+        CALLER_ID,
+        expectedSuffix,
         mockQueryRunner,
       );
     });
