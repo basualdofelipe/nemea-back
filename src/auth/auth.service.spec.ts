@@ -281,5 +281,28 @@ describe('AuthService', () => {
       );
       expect(mockJwtService.sign).not.toHaveBeenCalled();
     });
+
+    it('rejects any non-demo email even when flag=true (no privilege escalation)', async () => {
+      mockConfigService.get.mockReturnValue('true');
+
+      await expect(
+        service.validateDemoLogin('admin@nemea.com'),
+      ).rejects.toThrow(UnauthorizedException);
+      // The pinned demo account is never looked up for a foreign email.
+      expect(mockUsersService.findActiveByEmail).not.toHaveBeenCalled();
+      expect(mockJwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it('looks up the pinned demo account, not the client-supplied address', async () => {
+      mockConfigService.get.mockReturnValue('true');
+      mockUsersService.findActiveByEmail.mockResolvedValue(mockDemoUser);
+      mockJwtService.sign.mockReturnValue('signed-token');
+
+      await service.validateDemoLogin('demo@nemea.app');
+
+      expect(mockUsersService.findActiveByEmail).toHaveBeenCalledWith(
+        'demo@nemea.app',
+      );
+    });
   });
 });
