@@ -388,12 +388,37 @@ export class ScenariosService {
     suffix: string,
     qr: QueryRunner,
   ): Promise<void> {
+    // WR-A7: truncate the BASE name to (200 - suffix.length) BEFORE
+    // concatenation so the discriminator (` - <name> #<shortId>`) is never
+    // cut by the final LEFT(..., 200). Otherwise two scenarios whose names
+    // share a long prefix can collide after truncation, defeating WR-01.
+    //
+    // suffix.length is known at JS time and clamped here defensively: if the
+    // suffix would itself overflow 200 chars (impossible with the current
+    // ` - <name capped to 255> #<8 hex>` shape, but defensive against future
+    // suffix changes), we throw rather than producing a silently truncated
+    // discriminator that breaks uniqueness.
+    if (suffix.length >= 200) {
+      throw new Error(
+        `transferOwnership: suffix length ${suffix.length} >= 200 (varchar(200) overflow)`,
+      );
+    }
+    const baseMax = 200 - suffix.length;
+
+    // WR-A8: include updated_at: () => 'NOW()' so the bulk UPDATE bumps
+    // the timestamp. TypeORM's @UpdateDateColumn only fires through
+    // repository.save / manager.save -- a raw QueryBuilder.update().execute()
+    // skips entity subscribers. Without this, transferred scenarios keep
+    // their old updatedAt and appear at their previous position in the new
+    // owner's findAll (ordered by updatedAt DESC) instead of surfacing as
+    // recent activity.
     await qr.manager
       .createQueryBuilder()
       .update(Scenario)
       .set({
-        name: () => "LEFT(COALESCE(name, '') || :suffix, 200)",
+        name: () => `LEFT(COALESCE(name, ''), ${baseMax}) || :suffix`,
         user: { id: newOwnerId },
+        updated_at: () => 'NOW()',
       })
       .where('user_id = :victimId', { victimId })
       .setParameter('suffix', suffix)

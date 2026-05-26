@@ -340,10 +340,14 @@ describe('ScenariosService', () => {
       );
 
       expect(mockUpdateBuilder.update).toHaveBeenCalledWith(Scenario);
+      // WR-A8: assert that .set() includes an updated_at refresh, so the
+      // bulk UPDATE bumps updatedAt and the transferred scenarios surface
+      // at the top of the new owner's list (sorted by updatedAt DESC).
       expect(mockUpdateBuilder.set).toHaveBeenCalledWith(
         expect.objectContaining({
           name: expect.any(Function),
           user: { id: 'caller-uuid' },
+          updated_at: expect.any(Function),
         }),
       );
       expect(mockUpdateBuilder.where).toHaveBeenCalledWith(
@@ -355,6 +359,47 @@ describe('ScenariosService', () => {
         ' - Juan',
       );
       expect(mockUpdateBuilder.execute).toHaveBeenCalledTimes(1);
+    });
+
+    // WR-A7: the base name is truncated BEFORE concatenation with the
+    // suffix, so the discriminator (` - <name> #<shortId>`) cannot be cut
+    // by the final varchar(200) limit. Verified by inspecting the raw SQL
+    // emitted by the name-set arrow function.
+    it('WR-A7: trunca el name base ANTES de concatenar para preservar el sufijo intacto', async () => {
+      const suffix = ' - Maria #ab12cd34'; // 18 chars
+      await service.transferOwnership(
+        'victim-uuid',
+        'caller-uuid',
+        suffix,
+        mockQueryRunner as unknown as QueryRunner,
+      );
+
+      const setArg = mockUpdateBuilder.set.mock.calls[0][0] as {
+        name: () => string;
+      };
+      const sql = setArg.name();
+      // Expected: LEFT(COALESCE(name, ''), 182) || :suffix
+      // The 200 cap is enforced by varchar(200) at the DB layer; we only
+      // need to ensure the JS-side truncation leaves room for the suffix.
+      expect(sql).toBe(
+        `LEFT(COALESCE(name, ''), ${200 - suffix.length}) || :suffix`,
+      );
+    });
+
+    // WR-A7: defensive throw when the caller supplies a suffix as long as
+    // (or longer than) the column itself -- otherwise baseMax would be <= 0
+    // and the SQL would silently produce an empty base.
+    it('WR-A7: throws cuando suffix.length >= 200 (overflow defensivo)', async () => {
+      const overflowSuffix = ' '.repeat(200);
+      await expect(
+        service.transferOwnership(
+          'victim-uuid',
+          'caller-uuid',
+          overflowSuffix,
+          mockQueryRunner as unknown as QueryRunner,
+        ),
+      ).rejects.toThrow(/suffix length 200 >= 200/);
+      expect(mockUpdateBuilder.execute).not.toHaveBeenCalled();
     });
 
     it('ejecuta el UPDATE incluso cuando victim no tiene scenarios (idempotent: affected=0 no rompe)', async () => {
