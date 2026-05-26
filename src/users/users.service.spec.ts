@@ -44,10 +44,17 @@ describe('UsersService', () => {
     updatedAt: new Date(),
   };
 
-  const mockQueryBuilder = {
+  // CR-A1 + CR-A2: after the transactional refactor, both the victim
+  // re-fetch and the last-admin COUNT live on queryRunner.manager. A single
+  // chainable mock serves both paths -- per-test arrangement calls
+  // `getOne` (victim lookup) and `getCount` (admin count) on it.
+  const mockTxnQueryBuilder = {
     innerJoin: jest.fn().mockReturnThis(),
+    innerJoinAndSelect: jest.fn().mockReturnThis(),
+    setLock: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
+    getOne: jest.fn(),
     getCount: jest.fn().mockResolvedValue(1),
   };
 
@@ -58,6 +65,9 @@ describe('UsersService', () => {
     rollbackTransaction: jest.fn(),
     release: jest.fn(),
     manager: {
+      createQueryBuilder: jest.fn(() => mockTxnQueryBuilder),
+      findOne: jest.fn(),
+      save: jest.fn(),
       delete: jest.fn(),
     },
   };
@@ -69,7 +79,6 @@ describe('UsersService', () => {
     save: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
-    createQueryBuilder: jest.fn(() => mockQueryBuilder),
     manager: {
       connection: {
         createQueryRunner: jest.fn(() => mockQueryRunner),
@@ -110,11 +119,16 @@ describe('UsersService', () => {
     jest.clearAllMocks();
 
     // Restore chain semantics after jest.clearAllMocks wipes mockReturnThis
-    mockQueryBuilder.innerJoin.mockReturnThis();
-    mockQueryBuilder.where.mockReturnThis();
-    mockQueryBuilder.andWhere.mockReturnThis();
-    mockQueryBuilder.getCount.mockResolvedValue(1);
-    mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+    mockTxnQueryBuilder.innerJoin.mockReturnThis();
+    mockTxnQueryBuilder.innerJoinAndSelect.mockReturnThis();
+    mockTxnQueryBuilder.setLock.mockReturnThis();
+    mockTxnQueryBuilder.where.mockReturnThis();
+    mockTxnQueryBuilder.andWhere.mockReturnThis();
+    mockTxnQueryBuilder.getCount.mockResolvedValue(1);
+    mockTxnQueryBuilder.getOne.mockReset();
+    mockQueryRunner.manager.createQueryBuilder.mockReturnValue(
+      mockTxnQueryBuilder,
+    );
     mockRepository.manager.connection.createQueryRunner.mockReturnValue(
       mockQueryRunner,
     );
@@ -147,12 +161,18 @@ describe('UsersService', () => {
       });
     });
 
+    // WR-A5: assert the service actually filters by isActive: true. The
+    // previous version of this test only checked the return value, so a
+    // regression that dropped the isActive filter would still pass.
     it('should return null for deactivated user', async () => {
       mockRepository.findOne.mockResolvedValue(null);
 
       const result = await service.findActiveByEmail('deactivated@email.com');
 
       expect(result).toBeNull();
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { email: 'deactivated@email.com', isActive: true },
+      });
     });
   });
 
@@ -245,8 +265,10 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: true,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
-      mockRepository.save.mockImplementation((u: User) => Promise.resolve(u));
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
+      mockQueryRunner.manager.save.mockImplementation(
+        (_entity: unknown, u: User) => Promise.resolve(u),
+      );
 
       const result = await service.update(
         VICTIM_ID,
@@ -255,8 +277,10 @@ describe('UsersService', () => {
       );
 
       expect(result.name).toBe('New Name');
-      expect(mockRepository.createQueryBuilder).not.toHaveBeenCalled();
-      expect(mockRepository.save).toHaveBeenCalled();
+      // No COUNT for a name-only change (no last-admin path).
+      expect(mockTxnQueryBuilder.getCount).not.toHaveBeenCalled();
+      expect(mockQueryRunner.manager.save).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
     });
 
     it('actualiza role cuando roleId nuevo y valido', async () => {
@@ -266,9 +290,11 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: true,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
-      mockRoleRepository.findOne.mockResolvedValue(adminRole);
-      mockRepository.save.mockImplementation((u: User) => Promise.resolve(u));
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce(adminRole);
+      mockQueryRunner.manager.save.mockImplementation(
+        (_entity: unknown, u: User) => Promise.resolve(u),
+      );
 
       const result = await service.update(
         VICTIM_ID,
@@ -277,7 +303,7 @@ describe('UsersService', () => {
       );
 
       expect(result.role).toEqual(adminRole);
-      expect(mockRoleRepository.findOne).toHaveBeenCalledWith({
+      expect(mockQueryRunner.manager.findOne).toHaveBeenCalledWith(Role, {
         where: { id: ADMIN_ROLE_ID },
       });
     });
@@ -289,8 +315,10 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: true,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
-      mockRepository.save.mockImplementation((u: User) => Promise.resolve(u));
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
+      mockQueryRunner.manager.save.mockImplementation(
+        (_entity: unknown, u: User) => Promise.resolve(u),
+      );
 
       const result = await service.update(
         VICTIM_ID,
@@ -302,11 +330,12 @@ describe('UsersService', () => {
     });
 
     it('throws NotFoundException con Usuario no encontrado cuando user no existe', async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(null);
 
       await expect(
         service.update(VICTIM_ID, { name: 'X' }, CALLER_ID),
       ).rejects.toThrow(new NotFoundException('Usuario no encontrado'));
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
     });
 
     it('throws NotFoundException con Rol no encontrado cuando roleId no existe', async () => {
@@ -316,8 +345,8 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: true,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
-      mockRoleRepository.findOne.mockResolvedValue(null);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce(null);
 
       await expect(
         service.update(VICTIM_ID, { roleId: ADMIN_ROLE_ID }, CALLER_ID),
@@ -331,7 +360,7 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: true,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
 
       await expect(
         service.update(VICTIM_ID, { roleId: ADMIN_ROLE_ID }, VICTIM_ID),
@@ -347,8 +376,10 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: true,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
-      mockRepository.save.mockImplementation((u: User) => Promise.resolve(u));
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
+      mockQueryRunner.manager.save.mockImplementation(
+        (_entity: unknown, u: User) => Promise.resolve(u),
+      );
 
       const result = await service.update(
         VICTIM_ID,
@@ -357,7 +388,7 @@ describe('UsersService', () => {
       );
 
       expect(result.role).toEqual(editorRole);
-      expect(mockRoleRepository.findOne).not.toHaveBeenCalled();
+      expect(mockQueryRunner.manager.findOne).not.toHaveBeenCalled();
     });
 
     it('throws BadRequestException No puedes desactivar tu propia cuenta cuando victim === caller y isActive false', async () => {
@@ -367,13 +398,51 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: true,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
 
       await expect(
         service.update(VICTIM_ID, { isActive: false }, VICTIM_ID),
       ).rejects.toThrow(
         new BadRequestException('No puedes desactivar tu propia cuenta'),
       );
+    });
+
+    // WR-A1: idempotent PATCH — if the victim is already inactive, a
+    // self-PATCH with isActive=false should be a no-op, not an error.
+    it('WR-A1: NO throws cuando victim === caller y isActive false pero el victim ya estaba inactivo (idempotencia)', async () => {
+      const victim = {
+        ...mockUser,
+        id: VICTIM_ID,
+        role: editorRole,
+        isActive: false,
+      };
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
+      mockQueryRunner.manager.save.mockImplementation(
+        (_entity: unknown, u: User) => Promise.resolve(u),
+      );
+
+      const result = await service.update(
+        VICTIM_ID,
+        { isActive: false },
+        VICTIM_ID,
+      );
+
+      expect(result.isActive).toBe(false);
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+    });
+
+    // WR-A2: explicit guard rejects roleId: null before any DB I/O.
+    it('WR-A2: throws BadRequestException cuando dto.roleId es null', async () => {
+      await expect(
+        service.update(
+          VICTIM_ID,
+          { roleId: null as unknown as string },
+          CALLER_ID,
+        ),
+      ).rejects.toThrow(new BadRequestException('roleId no puede ser null'));
+      expect(
+        mockRepository.manager.connection.createQueryRunner,
+      ).not.toHaveBeenCalled();
     });
 
     it('throws ultimo-admin cuando demote del ultimo admin via roleId no-admin', async () => {
@@ -383,9 +452,9 @@ describe('UsersService', () => {
         role: adminRole,
         isActive: true,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
-      mockRoleRepository.findOne.mockResolvedValue(editorRole);
-      mockQueryBuilder.getCount.mockResolvedValueOnce(0);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce(editorRole);
+      mockTxnQueryBuilder.getCount.mockResolvedValueOnce(0);
 
       await expect(
         service.update(VICTIM_ID, { roleId: EDITOR_ROLE_ID }, CALLER_ID),
@@ -403,8 +472,8 @@ describe('UsersService', () => {
         role: adminRole,
         isActive: true,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
-      mockQueryBuilder.getCount.mockResolvedValueOnce(0);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
+      mockTxnQueryBuilder.getCount.mockResolvedValueOnce(0);
 
       await expect(
         service.update(VICTIM_ID, { isActive: false }, CALLER_ID),
@@ -413,6 +482,57 @@ describe('UsersService', () => {
           'No se puede dejar el sistema sin administradores activos',
         ),
       );
+    });
+
+    // CR-A1/CR-A2: the last-admin COUNT runs on queryRunner.manager (same
+    // transaction as the save) so the read and write are serialized by the
+    // pessimistic_write locks.
+    it('CR-A1/CR-A2: la COUNT de admins corre sobre queryRunner.manager (misma transaccion que save)', async () => {
+      const victim = {
+        ...mockUser,
+        id: VICTIM_ID,
+        role: adminRole,
+        isActive: true,
+      };
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce(editorRole);
+      mockTxnQueryBuilder.getCount.mockResolvedValueOnce(5);
+      mockQueryRunner.manager.save.mockImplementation(
+        (_entity: unknown, u: User) => Promise.resolve(u),
+      );
+
+      await service.update(VICTIM_ID, { roleId: EDITOR_ROLE_ID }, CALLER_ID);
+
+      // The createQueryBuilder used to count admins is the one on the
+      // queryRunner manager (transactional), not on the bare repository.
+      expect(mockQueryRunner.manager.createQueryBuilder).toHaveBeenCalled();
+      expect(mockTxnQueryBuilder.setLock).toHaveBeenCalledWith(
+        'pessimistic_write',
+      );
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+    });
+
+    // WR-A6: rollback path for update — if save() fails, the transaction
+    // rolls back so any intermediate state (role lookup) does not persist.
+    it('WR-A6: rollbackea cuando save falla en update', async () => {
+      const victim = {
+        ...mockUser,
+        id: VICTIM_ID,
+        role: editorRole,
+        isActive: true,
+      };
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
+      mockQueryRunner.manager.save.mockRejectedValueOnce(
+        new Error('constraint violation'),
+      );
+
+      await expect(
+        service.update(VICTIM_ID, { name: 'X' }, CALLER_ID),
+      ).rejects.toThrow('constraint violation');
+
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
     });
   });
 
@@ -425,7 +545,7 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: false,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
       mockScenariosService.transferOwnership.mockResolvedValue(undefined);
       mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
 
@@ -446,25 +566,40 @@ describe('UsersService', () => {
       expect(mockQueryRunner.release).toHaveBeenCalled();
     });
 
-    it('throws self-delete con No puedes borrarte a vos mismo cuando id === callerId', async () => {
+    // WR-A3: self-delete check moves AFTER existence check. Caller whose
+    // own row was concurrently deleted now gets a clean 404 instead of
+    // "No puedes borrarte a vos mismo".
+    it('WR-A3: throws NotFoundException cuando victim no existe (incluso cuando id === callerId)', async () => {
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(null);
+
+      await expect(service.remove(VICTIM_ID, VICTIM_ID)).rejects.toThrow(
+        new NotFoundException('Usuario no encontrado'),
+      );
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+    });
+
+    it('throws self-delete con No puedes borrarte a vos mismo cuando id === callerId y user existe', async () => {
+      const victim = {
+        ...mockUser,
+        id: VICTIM_ID,
+        role: editorRole,
+        isActive: true,
+      };
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
+
       await expect(service.remove(VICTIM_ID, VICTIM_ID)).rejects.toThrow(
         new BadRequestException('No puedes borrarte a vos mismo'),
       );
-      expect(mockRepository.findOne).not.toHaveBeenCalled();
-      expect(
-        mockRepository.manager.connection.createQueryRunner,
-      ).not.toHaveBeenCalled();
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
     });
 
     it('throws NotFoundException cuando user no existe', async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(null);
 
       await expect(service.remove(VICTIM_ID, CALLER_ID)).rejects.toThrow(
         new NotFoundException('Usuario no encontrado'),
       );
-      expect(
-        mockRepository.manager.connection.createQueryRunner,
-      ).not.toHaveBeenCalled();
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
     });
 
     it('throws ultimo-admin cuando borrando unico admin activo', async () => {
@@ -474,17 +609,15 @@ describe('UsersService', () => {
         role: adminRole,
         isActive: true,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
-      mockQueryBuilder.getCount.mockResolvedValueOnce(0);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
+      mockTxnQueryBuilder.getCount.mockResolvedValueOnce(0);
 
       await expect(service.remove(VICTIM_ID, CALLER_ID)).rejects.toThrow(
         new BadRequestException(
           'No se puede dejar el sistema sin administradores activos',
         ),
       );
-      expect(
-        mockRepository.manager.connection.createQueryRunner,
-      ).not.toHaveBeenCalled();
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
     });
 
     it('cuando victim.name === "" usa fallback "usuario borrado" en el suffix (CR-02)', async () => {
@@ -495,7 +628,7 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: false,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
       mockScenariosService.transferOwnership.mockResolvedValue(undefined);
       mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
 
@@ -517,7 +650,7 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: false,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
       mockScenariosService.transferOwnership.mockResolvedValue(undefined);
       mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
 
@@ -539,7 +672,7 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: false,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
       mockScenariosService.transferOwnership.mockResolvedValue(undefined);
       mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
 
@@ -561,7 +694,7 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: false,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
       mockScenariosService.transferOwnership.mockResolvedValue(undefined);
       mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
 
@@ -584,7 +717,7 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: false,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
       mockScenariosService.transferOwnership.mockRejectedValue(
         new Error('overflow'),
       );
@@ -607,7 +740,7 @@ describe('UsersService', () => {
         role: editorRole,
         isActive: false,
       };
-      mockRepository.findOne.mockResolvedValue(victim);
+      mockTxnQueryBuilder.getOne.mockResolvedValueOnce(victim);
       mockScenariosService.transferOwnership.mockResolvedValue(undefined);
       mockQueryRunner.manager.delete.mockRejectedValue(
         new Error('fk violation'),

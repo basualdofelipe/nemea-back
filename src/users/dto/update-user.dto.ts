@@ -25,6 +25,12 @@ export class UpdateUserDto {
   name?: string | null;
 
   @ApiProperty({ required: false, description: 'UUID del rol a asignar' })
+  // WR-A2: @IsOptional() skips validation for null AND undefined, which lets
+  // { roleId: null } slip through to the service where it produced a
+  // misleading "No puedes cambiar tu propio rol" error. ValidateIf rejects
+  // explicit null at the validation layer, mirroring the same pattern used
+  // for `name` above. The service also has a defensive guard for null.
+  @ValidateIf((_, value) => value !== null)
   @IsUUID()
   @IsOptional()
   roleId?: string;

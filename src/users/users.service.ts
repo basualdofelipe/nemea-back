@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, QueryRunner, Repository } from 'typeorm';
 import { Role } from '../roles/entities/role.entity';
 import { ScenariosService } from '../scenarios/scenarios.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -72,123 +72,191 @@ export class UsersService {
     });
   }
 
+  // ─── Helper: count OTHER active admins inside a transaction ───
+  //
+  // CR-A1: the COUNT must run on the same QueryRunner manager as the
+  // surrounding write, with pessimistic_write locks on the admin rows it
+  // reads, so concurrent demote/deactivate/delete requests on the
+  // "penultimate" admin serialize instead of both passing the guard.
+  private async countOtherActiveAdmins(
+    manager: EntityManager,
+    excludeId: string,
+  ): Promise<number> {
+    return manager
+      .createQueryBuilder(User, 'u')
+      .innerJoin('u.role', 'r')
+      .setLock('pessimistic_write')
+      .where('u.isActive = :active', { active: true })
+      .andWhere('r.canManageUsers = :flag', { flag: true })
+      .andWhere('u.id != :id', { id: excludeId })
+      .getCount();
+  }
+
   async update(
     id: string,
     dto: UpdateUserDto,
     callerId: string,
   ): Promise<User> {
-    const victim = await this.usersRepository.findOne({ where: { id } });
-    if (!victim) {
-      throw new NotFoundException('Usuario no encontrado');
+    // WR-A2: explicit guard — roleId null bypasses @IsUUID + @IsOptional
+    // upstream, so the DTO can arrive with roleId === null. Reject it here
+    // before any DB I/O instead of producing the misleading
+    // "No puedes cambiar tu propio rol" further down.
+    if (dto.roleId === null) {
+      throw new BadRequestException('roleId no puede ser null');
     }
 
-    // Defensive: User.role is technically nullable at the DB layer (the
-    // @ManyToOne decorator does not enforce non-null in TypeORM). Null-coalesce
-    // the id and permission lookups so a user without a role does not crash
-    // with TypeError -- callers get well-formed 400/404 responses instead.
-    const victimRoleId = victim.role?.id ?? null;
+    // CR-A1 + CR-A2: wrap the entire read → guard → write sequence in a
+    // SERIALIZABLE transaction with a pessimistic_write lock on the victim
+    // row (and on the admin rows the guard reads). This closes the TOCTOU
+    // window where two concurrent demote/delete requests could both pass
+    // the last-admin guard.
+    const queryRunner: QueryRunner =
+      this.usersRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction('SERIALIZABLE');
 
-    // Guard 1: self-role-edit
-    if (
-      id === callerId &&
-      dto.roleId !== undefined &&
-      dto.roleId !== victimRoleId
-    ) {
-      throw new BadRequestException('No puedes cambiar tu propio rol');
-    }
+    try {
+      const victim = await queryRunner.manager
+        .createQueryBuilder(User, 'u')
+        .innerJoinAndSelect('u.role', 'r')
+        .setLock('pessimistic_write')
+        .where('u.id = :id', { id })
+        .getOne();
 
-    // Guard 2: self-deactivate
-    if (id === callerId && dto.isActive === false) {
-      throw new BadRequestException('No puedes desactivar tu propia cuenta');
-    }
-
-    // Resolve new role if changed
-    let newRole: Role | null = victim.role ?? null;
-    if (dto.roleId !== undefined && dto.roleId !== victimRoleId) {
-      const found = await this.roleRepository.findOne({
-        where: { id: dto.roleId },
-      });
-      if (!found) {
-        throw new NotFoundException('Rol no encontrado');
+      if (!victim) {
+        throw new NotFoundException('Usuario no encontrado');
       }
-      newRole = found;
-    }
 
-    // Guard 3: last-active-admin (computed after candidate write)
-    const willBeActive = dto.isActive ?? victim.isActive;
-    const willBeAdmin = newRole?.canManageUsers ?? false;
-    const wasAdminActive =
-      victim.isActive && (victim.role?.canManageUsers ?? false);
-    const willNoLongerBeAdminActive =
-      wasAdminActive && !(willBeActive && willBeAdmin);
-    if (willNoLongerBeAdminActive) {
-      const otherActiveAdmins = await this.usersRepository
-        .createQueryBuilder('u')
-        .innerJoin('u.role', 'r')
-        .where('u.isActive = :active', { active: true })
-        .andWhere('r.canManageUsers = :flag', { flag: true })
-        .andWhere('u.id != :id', { id })
-        .getCount();
-      if (otherActiveAdmins === 0) {
-        throw new BadRequestException(
-          'No se puede dejar el sistema sin administradores activos',
+      // Defensive: User.role is technically nullable at the DB layer (the
+      // @ManyToOne decorator does not enforce non-null in TypeORM). Null-coalesce
+      // the id and permission lookups so a user without a role does not crash
+      // with TypeError -- callers get well-formed 400/404 responses instead.
+      const victimRoleId = victim.role?.id ?? null;
+
+      // Guard 1: self-role-edit
+      if (
+        id === callerId &&
+        dto.roleId !== undefined &&
+        dto.roleId !== victimRoleId
+      ) {
+        throw new BadRequestException('No puedes cambiar tu propio rol');
+      }
+
+      // Guard 2: self-deactivate (WR-A1: idempotent — only block when this
+      // PATCH would actually change isActive from true → false).
+      if (
+        id === callerId &&
+        dto.isActive === false &&
+        victim.isActive === true
+      ) {
+        throw new BadRequestException('No puedes desactivar tu propia cuenta');
+      }
+
+      // Resolve new role if changed
+      let newRole: Role | null = victim.role ?? null;
+      if (dto.roleId !== undefined && dto.roleId !== victimRoleId) {
+        const found = await queryRunner.manager.findOne(Role, {
+          where: { id: dto.roleId },
+        });
+        if (!found) {
+          throw new NotFoundException('Rol no encontrado');
+        }
+        newRole = found;
+      }
+
+      // Guard 3: last-active-admin (computed after candidate write)
+      const willBeActive = dto.isActive ?? victim.isActive;
+      const willBeAdmin = newRole?.canManageUsers ?? false;
+      const wasAdminActive =
+        victim.isActive && (victim.role?.canManageUsers ?? false);
+      const willNoLongerBeAdminActive =
+        wasAdminActive && !(willBeActive && willBeAdmin);
+      if (willNoLongerBeAdminActive) {
+        const otherActiveAdmins = await this.countOtherActiveAdmins(
+          queryRunner.manager,
+          id,
         );
+        if (otherActiveAdmins === 0) {
+          throw new BadRequestException(
+            'No se puede dejar el sistema sin administradores activos',
+          );
+        }
       }
-    }
 
-    // Apply changes field-by-field (defense-in-depth: no repo.merge)
-    if (dto.name !== undefined) {
-      victim.name = dto.name;
-    }
-    // Only mutate role when a new one was resolved; never assign null over
-    // an existing role (the User.role column is required at the type level
-    // even though the DB column is nullable -- preserve current behavior).
-    if (newRole) {
-      victim.role = newRole;
-    }
-    if (dto.isActive !== undefined) {
-      victim.isActive = dto.isActive;
-    }
+      // Apply changes field-by-field (defense-in-depth: no repo.merge)
+      if (dto.name !== undefined) {
+        victim.name = dto.name;
+      }
+      // IN-A1: only mutate role when it actually changed. Reassigning the
+      // same role makes TypeORM emit the FK in the UPDATE and bumps
+      // updated_at for no reason.
+      if (dto.roleId !== undefined && dto.roleId !== victimRoleId && newRole) {
+        victim.role = newRole;
+      }
+      if (dto.isActive !== undefined) {
+        victim.isActive = dto.isActive;
+      }
 
-    return this.usersRepository.save(victim);
+      const saved = await queryRunner.manager.save(User, victim);
+      await queryRunner.commitTransaction();
+      return saved;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async remove(id: string, callerId: string): Promise<void> {
-    // Guard 1: self-delete (fast-fail before any DB I/O)
-    if (id === callerId) {
-      throw new BadRequestException('No puedes borrarte a vos mismo');
-    }
-
-    const victim = await this.usersRepository.findOne({ where: { id } });
-    if (!victim) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
-
-    // Guard 2: last-active-admin (null-safe on victim.role)
-    if (victim.isActive && (victim.role?.canManageUsers ?? false)) {
-      const otherActiveAdmins = await this.usersRepository
-        .createQueryBuilder('u')
-        .innerJoin('u.role', 'r')
-        .where('u.isActive = :active', { active: true })
-        .andWhere('r.canManageUsers = :flag', { flag: true })
-        .andWhere('u.id != :id', { id })
-        .getCount();
-      if (otherActiveAdmins === 0) {
-        throw new BadRequestException(
-          'No se puede dejar el sistema sin administradores activos',
-        );
-      }
-    }
-
-    // Atomic transfer + delete inside a QueryRunner transaction.
-    // Order matters: transferOwnership BEFORE manager.delete so the
-    // ON DELETE CASCADE never fires against the victim's scenarios.
+    // CR-A1: wrap the entire read → guard → transfer → delete sequence in a
+    // SERIALIZABLE transaction with pessimistic_write locks. The self-delete
+    // check (WR-A3) moves AFTER the existence check so a caller whose own
+    // row was concurrently deleted gets a clean 404 instead of "No puedes
+    // borrarte a vos mismo".
     const queryRunner =
       this.usersRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
-    await queryRunner.startTransaction();
+    await queryRunner.startTransaction('SERIALIZABLE');
 
     try {
+      const victim = await queryRunner.manager
+        .createQueryBuilder(User, 'u')
+        .innerJoinAndSelect('u.role', 'r')
+        .setLock('pessimistic_write')
+        .where('u.id = :id', { id })
+        .getOne();
+
+      if (!victim) {
+        throw new NotFoundException('Usuario no encontrado');
+      }
+
+      // WR-A3: self-delete check AFTER existence check (mirrors update()
+      // ordering and avoids misleading messages when the caller's own row
+      // was concurrently deleted by another admin).
+      if (id === callerId) {
+        throw new BadRequestException('No puedes borrarte a vos mismo');
+      }
+
+      // Guard: last-active-admin (null-safe on victim.role). Inside the
+      // transaction so two concurrent deletes of the penultimate admin
+      // serialize on the pessimistic_write lock.
+      if (victim.isActive && (victim.role?.canManageUsers ?? false)) {
+        const otherActiveAdmins = await this.countOtherActiveAdmins(
+          queryRunner.manager,
+          id,
+        );
+        if (otherActiveAdmins === 0) {
+          throw new BadRequestException(
+            'No se puede dejar el sistema sin administradores activos',
+          );
+        }
+      }
+
+      // Atomic transfer + delete. Order matters: transferOwnership BEFORE
+      // manager.delete so the ON DELETE CASCADE never fires against the
+      // victim's scenarios.
+      //
       // Defensive: victim.name can be '' or whitespace (frontend may submit
       // empty string). ?? only fires on null/undefined, so trim first and fall
       // back to 'usuario borrado' for any falsy/whitespace value.
