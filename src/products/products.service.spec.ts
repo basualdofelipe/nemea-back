@@ -21,11 +21,26 @@ const COLOR_ID = 'e5f6a7b8-c9d0-1234-efab-345678901234';
 const SIZE_ID = 'f6a7b8c9-d0e1-2345-fabc-456789012345';
 const SUPPLY_ID = 'a7b8c9d0-e1f2-3456-abcd-567890123456';
 
-const mockProductType = { id: TYPE_ID, skuCode: 'BIL' } as ProductType;
-const mockProductName = { id: NAME_ID, skuCode: 'HEF' } as ProductName;
-const mockProductFinish = { id: FINISH_ID, skuCode: 'LIS' } as ProductFinish;
-const mockProductColor = { id: COLOR_ID, skuCode: 'MAR' } as ProductColor;
-const mockProductSize = { id: SIZE_ID, skuCode: 'U' } as ProductSize;
+const mockProductType = {
+  id: TYPE_ID,
+  skuCode: 'BIL',
+} as unknown as ProductType;
+const mockProductName = {
+  id: NAME_ID,
+  skuCode: 'HEF',
+} as unknown as ProductName;
+const mockProductFinish = {
+  id: FINISH_ID,
+  skuCode: 'LIS',
+} as unknown as ProductFinish;
+const mockProductColor = {
+  id: COLOR_ID,
+  skuCode: 'MAR',
+} as unknown as ProductColor;
+const mockProductSize = {
+  id: SIZE_ID,
+  skuCode: 'U',
+} as unknown as ProductSize;
 
 const mockManager = {
   findOne: jest.fn(),

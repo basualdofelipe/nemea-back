@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { SuppliesService } from './supplies.service';
-import { Supply } from './entities/supply.entity';
+import { Supply, UnitType } from './entities/supply.entity';
 import { SupplyPriceHistory } from './entities/supply-price-history.entity';
 import { SupplyType } from '../catalogs/entities/supply-type.entity';
 import { Supplier } from '../suppliers/entities/supplier.entity';
@@ -175,7 +175,7 @@ describe('SuppliesService', () => {
       name: 'Cuero Vacuno Marrón',
       typeId: TYPE_ID,
       supplierId: SUPPLIER_ID,
-      unitType: 'm2' as const,
+      unitType: UnitType.M2,
     };
 
     it('creates supply + price atomically when initialPrice is provided', async () => {
