@@ -357,7 +357,13 @@ describe('ScenariosService', () => {
       expect(mockUpdateBuilder.execute).toHaveBeenCalledTimes(1);
     });
 
-    it('es no-op cuando victim no tiene scenarios (execute returns affected 0)', async () => {
+    it('ejecuta el UPDATE incluso cuando victim no tiene scenarios (idempotent: affected=0 no rompe)', async () => {
+      // WR-07: the implementation always runs the bulk UPDATE; when the
+      // victim has zero scenarios, execute() returns affected=0 and the
+      // method resolves to undefined (no error). This test does not assert
+      // any "skip the query" optimization -- it asserts that a zero-rows
+      // result is non-fatal (matches the documented contract that the
+      // caller does not need to pre-check for emptiness).
       mockUpdateBuilder.execute.mockResolvedValueOnce({ affected: 0 });
 
       await expect(
@@ -369,7 +375,7 @@ describe('ScenariosService', () => {
         ),
       ).resolves.toBeUndefined();
 
-      expect(mockUpdateBuilder.execute).toHaveBeenCalled();
+      expect(mockUpdateBuilder.execute).toHaveBeenCalledTimes(1);
     });
   });
 });
