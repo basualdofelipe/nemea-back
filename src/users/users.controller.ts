@@ -1,11 +1,12 @@
 import {
   Body,
-  ConflictException,
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
 } from '@nestjs/common';
 import {
@@ -14,9 +15,10 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../common/types/role.enum';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
 
@@ -27,36 +29,86 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'List all users (ADMIN only)' })
+  @RequirePermission('can_manage_users')
+  @ApiOperation({
+    summary: 'List all users (admin only)',
+    description: 'Requires: can_manage_users',
+  })
   @ApiResponse({ status: 200, description: 'List of all users' })
-  @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden — requires can_manage_users permission',
+  })
   async findAll(): Promise<User[]> {
     return this.usersService.findAll();
   }
 
   @Post()
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Add a user to the whitelist (ADMIN only)' })
+  @RequirePermission('can_manage_users')
+  @ApiOperation({
+    summary: 'Add a user to the whitelist (admin only)',
+    description: 'Requires: can_manage_users',
+  })
   @ApiResponse({ status: 201, description: 'User created successfully' })
   @ApiResponse({ status: 409, description: 'Email already registered' })
-  @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden — requires can_manage_users permission',
+  })
   async create(@Body() dto: CreateUserDto): Promise<User> {
-    const existing = await this.usersService.findByEmail(dto.email);
-
-    if (existing) {
-      throw new ConflictException('Email ya registrado');
-    }
-
+    // WR-A4: the email uniqueness check moved into UsersService.create
+    // where it catches the @Unique(['email']) DB constraint violation
+    // and re-throws as 409. The previous controller-level pre-check was
+    // a TOCTOU race: two concurrent POSTs with the same email could both
+    // pass findByEmail and the loser would get a raw 500.
     return this.usersService.create(dto);
   }
 
+  @Patch(':id')
+  @RequirePermission('can_manage_users')
+  @ApiOperation({
+    summary: 'Update user fields (admin only)',
+    description: 'Requires: can_manage_users',
+  })
+  @ApiResponse({ status: 200, description: 'User updated successfully' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request — self-lockout guard or invalid payload',
+  })
+  @ApiResponse({ status: 404, description: 'User or role not found' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden — requires can_manage_users permission',
+  })
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser('id') callerId: string,
+  ): Promise<User> {
+    return this.usersService.update(id, dto, callerId);
+  }
+
   @Delete(':id')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Remove a user from the whitelist (ADMIN only)' })
-  @ApiResponse({ status: 200, description: 'User removed successfully' })
-  @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })
-  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.usersService.remove(id);
+  @HttpCode(204)
+  @RequirePermission('can_manage_users')
+  @ApiOperation({
+    summary: 'Hard-delete user and transfer scenarios (admin only)',
+    description: 'Requires: can_manage_users',
+  })
+  @ApiResponse({ status: 204, description: 'User deleted' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request — self-lockout guard',
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden — requires can_manage_users permission',
+  })
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') callerId: string,
+  ): Promise<void> {
+    return this.usersService.remove(id, callerId);
   }
 }

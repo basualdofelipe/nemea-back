@@ -1,7 +1,8 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Role } from '../common/types/role.enum';
+import { NO_PERMISSIONS } from '../common/types/permission';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -12,13 +13,30 @@ describe('AuthService', () => {
   let usersService: UsersService;
   let jwtService: JwtService;
 
+  const mockRole = {
+    id: 'role-uuid-1',
+    name: 'ADMIN',
+    isSystem: true,
+    canViewProducts: true,
+    canEditProducts: true,
+    canViewSupplies: true,
+    canEditSupplies: true,
+    canViewExpenses: true,
+    canEditExpenses: true,
+    canUseCalculator: true,
+    canManageScenarios: true,
+    canViewDashboard: true,
+    canManageConfig: true,
+    canManageUsers: true,
+  };
+
   const mockUser: Partial<User> = {
     id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     email: 'admin@nemea.com',
     name: 'Admin Nemea',
     pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
     googleId: 'google-sub-123',
-    role: Role.ADMIN,
+    role: mockRole as User['role'],
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -35,6 +53,7 @@ describe('AuthService', () => {
   };
 
   const mockConfigService = {
+    get: jest.fn(),
     getOrThrow: jest.fn().mockReturnValue('test-google-client-id'),
   };
 
@@ -86,7 +105,8 @@ describe('AuthService', () => {
       expect(result.accessToken).toBe('mocked-jwt-token');
       expect(result.user.id).toBe('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
       expect(result.user.email).toBe('admin@nemea.com');
-      expect(result.user.role).toBe(Role.ADMIN);
+      expect(result.user.permissions).toBeDefined();
+      expect(result.user.permissions.canManageUsers).toBe(true);
       expect(result.user.name).toBe('Admin Nemea');
       expect(result.user.pictureUrl).toBe(
         'https://lh3.googleusercontent.com/photo.jpg',
@@ -103,11 +123,13 @@ describe('AuthService', () => {
           googleId: 'google-sub-123',
         },
       );
-      expect(jwtService.sign).toHaveBeenCalledWith({
-        sub: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        email: 'admin@nemea.com',
-        role: Role.ADMIN,
-      });
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+          email: 'admin@nemea.com',
+          permissions: expect.objectContaining({ canManageUsers: true }),
+        }),
+      );
     });
 
     it('should throw UnauthorizedException for non-whitelisted email', async () => {
@@ -179,6 +201,108 @@ describe('AuthService', () => {
       );
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('extractPermissions via NO_PERMISSIONS', () => {
+    it('NO_PERMISSIONS constant has all flags false', () => {
+      expect(NO_PERMISSIONS.canManageUsers).toBe(false);
+      expect(NO_PERMISSIONS.canViewProducts).toBe(false);
+    });
+  });
+
+  describe('validateDemoLogin', () => {
+    const DEMO_USER_ID = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
+
+    const mockDemoUser = {
+      id: DEMO_USER_ID,
+      email: 'demo@nemea.app',
+      name: 'Demo Nemea',
+      pictureUrl: null,
+      isActive: true,
+      role: {
+        id: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
+        name: 'ADMIN',
+        isSystem: true,
+        canViewProducts: true,
+        canEditProducts: true,
+        canViewSupplies: true,
+        canEditSupplies: true,
+        canViewExpenses: true,
+        canEditExpenses: true,
+        canUseCalculator: true,
+        canManageScenarios: true,
+        canViewDashboard: true,
+        canManageConfig: true,
+        canManageUsers: true,
+      },
+    };
+
+    it('returns accessToken + user when flag=true and user exists', async () => {
+      mockConfigService.get.mockReturnValue('true');
+      mockUsersService.findActiveByEmail.mockResolvedValue(mockDemoUser);
+      mockJwtService.sign.mockReturnValue('signed-token');
+
+      const result = await service.validateDemoLogin('demo@nemea.app');
+
+      expect(result.accessToken).toBe('signed-token');
+      expect(result.user.permissions).toBeDefined();
+      expect(mockJwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: mockDemoUser.id,
+          email: mockDemoUser.email,
+        }),
+      );
+    });
+
+    it('throws UnauthorizedException when DEMO_LOGIN_ENABLED=false', async () => {
+      mockConfigService.get.mockReturnValue('false');
+
+      await expect(service.validateDemoLogin('demo@nemea.app')).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(mockUsersService.findActiveByEmail).not.toHaveBeenCalled();
+    });
+
+    it('throws UnauthorizedException when DEMO_LOGIN_ENABLED is unset', async () => {
+      mockConfigService.get.mockReturnValue(undefined);
+
+      await expect(service.validateDemoLogin('demo@nemea.app')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('throws UnauthorizedException when user not found', async () => {
+      mockConfigService.get.mockReturnValue('true');
+      mockUsersService.findActiveByEmail.mockResolvedValue(null);
+
+      await expect(service.validateDemoLogin('demo@nemea.app')).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(mockJwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it('rejects any non-demo email even when flag=true (no privilege escalation)', async () => {
+      mockConfigService.get.mockReturnValue('true');
+
+      await expect(
+        service.validateDemoLogin('admin@nemea.com'),
+      ).rejects.toThrow(UnauthorizedException);
+      // The pinned demo account is never looked up for a foreign email.
+      expect(mockUsersService.findActiveByEmail).not.toHaveBeenCalled();
+      expect(mockJwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it('looks up the pinned demo account, not the client-supplied address', async () => {
+      mockConfigService.get.mockReturnValue('true');
+      mockUsersService.findActiveByEmail.mockResolvedValue(mockDemoUser);
+      mockJwtService.sign.mockReturnValue('signed-token');
+
+      await service.validateDemoLogin('demo@nemea.app');
+
+      expect(mockUsersService.findActiveByEmail).toHaveBeenCalledWith(
+        'demo@nemea.app',
+      );
     });
   });
 });
