@@ -1,6 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Role } from '../common/types/role.enum';
+import { NO_PERMISSIONS } from '../common/types/permission';
 import { User } from '../users/entities/user.entity';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -17,7 +17,7 @@ describe('AuthController', () => {
     user: {
       id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
       email: 'admin@nemea.com',
-      role: Role.ADMIN,
+      permissions: { ...NO_PERMISSIONS, canManageUsers: true },
       name: 'Admin Nemea',
       pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
     },
@@ -29,7 +29,6 @@ describe('AuthController', () => {
     name: 'Admin Nemea',
     pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
     googleId: 'google-sub-123',
-    role: Role.ADMIN,
     isActive: true,
   };
 
@@ -95,7 +94,7 @@ describe('AuthController', () => {
       const jwtUser: JwtUser = {
         id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
         email: 'admin@nemea.com',
-        role: Role.ADMIN,
+        permissions: { ...NO_PERMISSIONS, canManageUsers: true },
       };
       mockAuthService.getProfile.mockResolvedValue(mockUser);
 
@@ -111,7 +110,7 @@ describe('AuthController', () => {
       const jwtUser: JwtUser = {
         id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
         email: 'deleted@nemea.com',
-        role: Role.USER,
+        permissions: NO_PERMISSIONS,
       };
       mockAuthService.getProfile.mockResolvedValue(null);
 

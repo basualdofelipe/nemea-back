@@ -2,9 +2,17 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { OAuth2Client, TokenPayload } from 'google-auth-library';
+import { extractPermissions } from '../common/types/permission';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
+
+/**
+ * The demo login path is hard-pinned to this single account. The endpoint never
+ * authenticates an arbitrary email — even with DEMO_LOGIN_ENABLED=true — so a
+ * known real address (e.g. the seeded admin) cannot be used to mint a token.
+ */
+export const DEMO_USER_EMAIL = 'demo@nemea.app';
 
 @Injectable()
 export class AuthService {
@@ -40,10 +48,12 @@ export class AuthService {
       googleId: payload.sub,
     });
 
+    const permissions = extractPermissions(user.role);
+
     const accessToken = this.jwtService.sign({
       sub: user.id,
       email: user.email,
-      role: user.role,
+      permissions,
     });
 
     return {
@@ -51,7 +61,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        role: user.role,
+        permissions,
         name: payload.name ?? user.name ?? null,
         pictureUrl: payload.picture ?? user.pictureUrl ?? null,
       },
@@ -60,6 +70,41 @@ export class AuthService {
 
   async getProfile(userId: string): Promise<User | null> {
     return this.usersService.findById(userId);
+  }
+
+  async validateDemoLogin(email: string): Promise<AuthResponseDto> {
+    const enabled = this.configService.get<string>('DEMO_LOGIN_ENABLED');
+    if (enabled !== 'true') {
+      throw new UnauthorizedException('Demo login no disponible');
+    }
+
+    if (email !== DEMO_USER_EMAIL) {
+      throw new UnauthorizedException('Demo login no disponible');
+    }
+
+    // Look up the pinned demo account, never the client-supplied address.
+    const user = await this.usersService.findActiveByEmail(DEMO_USER_EMAIL);
+    if (!user) {
+      throw new UnauthorizedException('Usuario demo no encontrado');
+    }
+
+    const permissions = extractPermissions(user.role);
+    const accessToken = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+      permissions,
+    });
+
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        permissions,
+        name: user.name ?? null,
+        pictureUrl: user.pictureUrl ?? null,
+      },
+    };
   }
 
   private async verifyGoogleIdToken(
