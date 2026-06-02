@@ -110,8 +110,9 @@ FRONTEND_URL=http://localhost:3000
 JWT_SECRET=<generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))">
 GOOGLE_CLIENT_ID=<your-google-oauth-client-id>.apps.googleusercontent.com
 
-# Optional — enables /api/auth/demo-login endpoint
-DEMO_LOGIN_ENABLED=false
+# Enables /api/auth/demo-login endpoint — on by default for local clone-and-run
+# (lets you log in without configuring Google OAuth)
+DEMO_LOGIN_ENABLED=true
 ```
 
 ### 3. Start PostgreSQL
