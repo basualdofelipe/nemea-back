@@ -113,7 +113,7 @@ Frontend                            nemea-back
 
 There is no self-registration. A user account must exist in the `users` table before login is possible. The admin creates users via `POST /api/users`.
 
-A demo login path exists (`POST /api/auth/demo`) that is active only when `DEMO_LOGIN_ENABLED=true`. It is hard-pinned to the email configured in `DEMO_EMAIL` (default `demo@hefesto.com`) — the endpoint rejects any other email even if `DEMO_LOGIN_ENABLED` is true, so it cannot be used to mint tokens for real accounts.
+A demo login path exists (`POST /api/auth/demo-login`) that is active only when `DEMO_LOGIN_ENABLED=true`. It is hard-pinned to the email configured in `DEMO_EMAIL` (default `demo@hefesto.com`) — the endpoint rejects any other email even if `DEMO_LOGIN_ENABLED` is true, so it cannot be used to mint tokens for real accounts.
 
 ### Permission model
 
@@ -159,7 +159,7 @@ created_at timestamptz DEFAULT now()
 updated_at timestamptz DEFAULT now()
 ```
 
-UUID primary keys across the board. No auto-increment integers anywhere.
+All entities end up with UUID primary keys; an early users migration used SERIAL and was later migrated to UUID.
 
 ### Key entities and relationships
 
