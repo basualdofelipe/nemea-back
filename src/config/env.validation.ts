@@ -10,4 +10,6 @@ export const envValidationSchema = Joi.object({
   JWT_SECRET: Joi.string().required(),
   GOOGLE_CLIENT_ID: Joi.string().required(),
   DEMO_LOGIN_ENABLED: Joi.string().valid('true', 'false').default('false'),
+  DEMO_EMAIL: Joi.string().email().default('demo@hefesto.com'),
+  ADMIN_EMAIL: Joi.string().email().default('admin@hefesto.com'),
 });
