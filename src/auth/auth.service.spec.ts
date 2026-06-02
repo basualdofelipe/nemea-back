@@ -232,6 +232,8 @@ describe('AuthService', () => {
     const mockDemoUser = {
       id: DEMO_USER_ID,
       email: getDemoEmail(),
+      // Intentional fixture literal: this name is never asserted against; it
+      // mirrors the seed's `Demo ${APP_NAME ?? 'Hefesto'}` default for realism only.
       name: 'Demo Hefesto',
       pictureUrl: null,
       isActive: true,
