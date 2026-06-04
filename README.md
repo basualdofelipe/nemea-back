@@ -110,8 +110,9 @@ FRONTEND_URL=http://localhost:3000
 JWT_SECRET=<generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))">
 GOOGLE_CLIENT_ID=<your-google-oauth-client-id>.apps.googleusercontent.com
 
-# Optional — enables /api/auth/demo-login endpoint
-DEMO_LOGIN_ENABLED=false
+# Enables /api/auth/demo-login endpoint — on by default for local clone-and-run
+# (lets you log in without configuring Google OAuth)
+DEMO_LOGIN_ENABLED=true
 ```
 
 ### 3. Start PostgreSQL
@@ -237,6 +238,36 @@ docker compose up -d postgres-test
 ```
 
 Set `DATABASE_URL_TEST=postgresql://nemea:nemea_test@localhost:5433/nemea_test` in `.env` before running `npm run test:e2e`.
+
+---
+
+## Rebranding
+
+To deploy under a different brand, set these environment variables before building:
+
+**Backend (`.env`)**
+
+| Variable | Default | Description |
+|---|---|---|
+| `APP_NAME` | `Hefesto` | App name (Swagger title + description) |
+| `DEMO_EMAIL` | `demo@hefesto.com` | Email of the seeded demo account |
+| `ADMIN_EMAIL` | `admin@hefesto.com` | Email of the seeded admin account |
+| `ADMIN_NAME` | `Admin` | Display name of the seeded admin |
+
+**Frontend (`.env.local`)**
+
+| Variable | Default | Description |
+|---|---|---|
+| `NEXT_PUBLIC_APP_NAME` | `Hefesto` | App name (page title, heading, alt text) |
+| `NEXT_PUBLIC_DEMO_EMAIL` | `demo@hefesto.com` | Demo email shown on the login page |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | `admin@hefesto.com` | Contact email shown on the access-denied page |
+
+**Important notes:**
+
+- Reemplazá el logo en `public/brand/` (reemplazo manual de asset).
+- Las variables `NEXT_PUBLIC_*` se hornean en build time — hacé rebuild del frontend después de cambiarlas.
+- `ADMIN_EMAIL` debe ser una cuenta Google real del deployer para poder autenticarse como admin. El default `admin@hefesto.com` es un seed válido para DB fresca pero no es logueable.
+- `DEMO_EMAIL` (back) y `NEXT_PUBLIC_DEMO_EMAIL` (front) deben tener el MISMO valor o el demo-login devuelve 401.
 
 ---
 

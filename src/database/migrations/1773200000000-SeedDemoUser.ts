@@ -4,6 +4,9 @@ export class SeedDemoUser1773200000000 implements MigrationInterface {
   name = 'SeedDemoUser1773200000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    const demoEmail = process.env.DEMO_EMAIL ?? 'demo@hefesto.com';
+    const demoName = `Demo ${process.env.APP_NAME ?? 'Hefesto'}`;
+
     // Query for ADMIN role ID (not hardcoded — uuid was generated at migration time)
     const adminRoleResult = await queryRunner.query(
       `SELECT id FROM "roles" WHERE "name" = 'ADMIN' LIMIT 1`,
@@ -17,15 +20,15 @@ export class SeedDemoUser1773200000000 implements MigrationInterface {
 
     await queryRunner.query(
       `INSERT INTO "users" ("email", "name", "is_active", "role_id")
-       VALUES ('demo@nemea.app', 'Demo Nemea', true, $1)
+       VALUES ($1, $2, true, $3)
        ON CONFLICT ("email") DO NOTHING`,
-      [adminRoleId],
+      [demoEmail, demoName, adminRoleId],
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DELETE FROM "users" WHERE "email" = 'demo@nemea.app'`,
-    );
+    await queryRunner.query(`DELETE FROM "users" WHERE "email" = $1`, [
+      process.env.DEMO_EMAIL ?? 'demo@hefesto.com',
+    ]);
   }
 }

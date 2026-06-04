@@ -5,14 +5,8 @@ import { OAuth2Client, TokenPayload } from 'google-auth-library';
 import { extractPermissions } from '../common/types/permission';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import { getDemoEmail } from '../constants/branding';
 import { AuthResponseDto } from './dto/auth-response.dto';
-
-/**
- * The demo login path is hard-pinned to this single account. The endpoint never
- * authenticates an arbitrary email — even with DEMO_LOGIN_ENABLED=true — so a
- * known real address (e.g. the seeded admin) cannot be used to mint a token.
- */
-export const DEMO_USER_EMAIL = 'demo@nemea.app';
 
 @Injectable()
 export class AuthService {
@@ -78,12 +72,12 @@ export class AuthService {
       throw new UnauthorizedException('Demo login no disponible');
     }
 
-    if (email !== DEMO_USER_EMAIL) {
+    if (email !== getDemoEmail()) {
       throw new UnauthorizedException('Demo login no disponible');
     }
 
     // Look up the pinned demo account, never the client-supplied address.
-    const user = await this.usersService.findActiveByEmail(DEMO_USER_EMAIL);
+    const user = await this.usersService.findActiveByEmail(getDemoEmail());
     if (!user) {
       throw new UnauthorizedException('Usuario demo no encontrado');
     }

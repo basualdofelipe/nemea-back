@@ -5,6 +5,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NO_PERMISSIONS } from '../common/types/permission';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import { getDemoEmail } from '../constants/branding';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { AuthService } from './auth.service';
 
@@ -214,10 +215,26 @@ describe('AuthService', () => {
   describe('validateDemoLogin', () => {
     const DEMO_USER_ID = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
 
+    let originalDemoEmail: string | undefined;
+
+    beforeEach(() => {
+      originalDemoEmail = process.env.DEMO_EMAIL;
+    });
+
+    afterEach(() => {
+      if (originalDemoEmail === undefined) {
+        delete process.env.DEMO_EMAIL;
+      } else {
+        process.env.DEMO_EMAIL = originalDemoEmail;
+      }
+    });
+
     const mockDemoUser = {
       id: DEMO_USER_ID,
-      email: 'demo@nemea.app',
-      name: 'Demo Nemea',
+      email: getDemoEmail(),
+      // Intentional fixture literal: this name is never asserted against; it
+      // mirrors the seed's `Demo ${APP_NAME ?? 'Hefesto'}` default for realism only.
+      name: 'Demo Hefesto',
       pictureUrl: null,
       isActive: true,
       role: {
@@ -243,7 +260,7 @@ describe('AuthService', () => {
       mockUsersService.findActiveByEmail.mockResolvedValue(mockDemoUser);
       mockJwtService.sign.mockReturnValue('signed-token');
 
-      const result = await service.validateDemoLogin('demo@nemea.app');
+      const result = await service.validateDemoLogin(getDemoEmail());
 
       expect(result.accessToken).toBe('signed-token');
       expect(result.user.permissions).toBeDefined();
@@ -258,7 +275,7 @@ describe('AuthService', () => {
     it('throws UnauthorizedException when DEMO_LOGIN_ENABLED=false', async () => {
       mockConfigService.get.mockReturnValue('false');
 
-      await expect(service.validateDemoLogin('demo@nemea.app')).rejects.toThrow(
+      await expect(service.validateDemoLogin(getDemoEmail())).rejects.toThrow(
         UnauthorizedException,
       );
       expect(mockUsersService.findActiveByEmail).not.toHaveBeenCalled();
@@ -267,7 +284,7 @@ describe('AuthService', () => {
     it('throws UnauthorizedException when DEMO_LOGIN_ENABLED is unset', async () => {
       mockConfigService.get.mockReturnValue(undefined);
 
-      await expect(service.validateDemoLogin('demo@nemea.app')).rejects.toThrow(
+      await expect(service.validateDemoLogin(getDemoEmail())).rejects.toThrow(
         UnauthorizedException,
       );
     });
@@ -276,7 +293,7 @@ describe('AuthService', () => {
       mockConfigService.get.mockReturnValue('true');
       mockUsersService.findActiveByEmail.mockResolvedValue(null);
 
-      await expect(service.validateDemoLogin('demo@nemea.app')).rejects.toThrow(
+      await expect(service.validateDemoLogin(getDemoEmail())).rejects.toThrow(
         UnauthorizedException,
       );
       expect(mockJwtService.sign).not.toHaveBeenCalled();
@@ -298,11 +315,26 @@ describe('AuthService', () => {
       mockUsersService.findActiveByEmail.mockResolvedValue(mockDemoUser);
       mockJwtService.sign.mockReturnValue('signed-token');
 
-      await service.validateDemoLogin('demo@nemea.app');
+      await service.validateDemoLogin(getDemoEmail());
 
       expect(mockUsersService.findActiveByEmail).toHaveBeenCalledWith(
-        'demo@nemea.app',
+        getDemoEmail(),
       );
+    });
+
+    it('respeta DEMO_EMAIL del env (override)', async () => {
+      process.env.DEMO_EMAIL = 'demo@foo.com';
+      mockConfigService.get.mockReturnValue('true');
+      mockUsersService.findActiveByEmail.mockResolvedValue(mockDemoUser);
+      mockJwtService.sign.mockReturnValue('signed-token');
+
+      await expect(
+        service.validateDemoLogin('demo@foo.com'),
+      ).resolves.toBeDefined();
+
+      await expect(
+        service.validateDemoLogin('demo@hefesto.com'),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 });
