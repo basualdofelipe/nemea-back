@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { APP_NAME } from './constants/branding';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -44,8 +45,8 @@ async function bootstrap(): Promise<void> {
   // Swagger (development only)
   if (process.env.NODE_ENV !== 'production') {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('Nemea API')
-      .setDescription('Nemea leather goods cost management API')
+      .setTitle(`${APP_NAME} API`)
+      .setDescription(`${APP_NAME} leather goods cost management API`)
       .setVersion('0.1.0')
       .addBearerAuth()
       .build();
