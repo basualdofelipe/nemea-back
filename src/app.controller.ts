@@ -22,7 +22,7 @@ export class AppController {
   getHealth(): HealthResponse {
     return {
       status: 'ok',
-      app: 'nemea-back',
+      app: 'hefesto-back',
       version: '0.1.0',
       uptime: process.uptime(),
     };
