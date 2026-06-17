@@ -38,8 +38,8 @@ describe('UsersService', () => {
 
   const mockUser: Partial<User> = {
     id: VICTIM_ID,
-    email: 'admin@nemea.com',
-    name: 'Admin Nemea',
+    email: 'admin@hefesto.com',
+    name: 'Admin Hefesto',
     pictureUrl: null,
     googleId: null,
     role: adminRole as User['role'],
@@ -146,11 +146,11 @@ describe('UsersService', () => {
     it('should return an active user by email', async () => {
       mockRepository.findOne.mockResolvedValue(mockUser);
 
-      const result = await service.findActiveByEmail('admin@nemea.com');
+      const result = await service.findActiveByEmail('admin@hefesto.com');
 
       expect(result).toEqual(mockUser);
       expect(repository.findOne).toHaveBeenCalledWith({
-        where: { email: 'admin@nemea.com', isActive: true },
+        where: { email: 'admin@hefesto.com', isActive: true },
       });
     });
 

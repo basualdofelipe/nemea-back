@@ -1,6 +1,6 @@
-# nemea-back
+# hefesto-back
 
-REST API backend for **Nemea** — a cost management and pricing tool for a leather-goods business. Built with NestJS, TypeORM, and PostgreSQL. Deployment-ready for Railway, but runs locally for evaluation — there is no hosted instance (see [Local setup](#local-setup)).
+REST API backend for **Hefesto** — a cost management and pricing tool for a leather-goods business. Built with NestJS, TypeORM, and PostgreSQL. Deployment-ready for Railway, but runs locally for evaluation — there is no hosted instance (see [Local setup](#local-setup)).
 
 ---
 
@@ -83,7 +83,7 @@ Roles are fully custom: each role stores 11 boolean permission flags. The flags 
 
 ```bash
 git clone <repo-url>
-cd nemea-back
+cd hefesto-back
 npm install
 ```
 
@@ -101,7 +101,7 @@ NODE_ENV=development
 PORT=4000
 
 # Database — matches docker-compose.yml defaults, no change needed for local dev
-DATABASE_URL=postgresql://nemea:nemea_dev@localhost:5432/nemea_db
+DATABASE_URL=postgresql://hefesto:hefesto_dev@localhost:5432/hefesto_db
 
 # CORS
 FRONTEND_URL=http://localhost:3000
@@ -121,7 +121,7 @@ DEMO_LOGIN_ENABLED=true
 docker compose up -d postgres
 ```
 
-This starts a PostgreSQL 16 container on port `5432` with database `nemea_db`, user `nemea`, password `nemea_dev`.
+This starts a PostgreSQL 16 container on port `5432` with database `hefesto_db`, user `hefesto`, password `hefesto_dev`.
 
 ### 4. Run migrations
 
@@ -237,7 +237,7 @@ For local E2E tests a separate database runs on port `5433`:
 docker compose up -d postgres-test
 ```
 
-Set `DATABASE_URL_TEST=postgresql://nemea:nemea_test@localhost:5433/nemea_test` in `.env` before running `npm run test:e2e`.
+Set `DATABASE_URL_TEST=postgresql://hefesto:hefesto_test@localhost:5433/hefesto_test` in `.env` before running `npm run test:e2e`.
 
 ---
 
