@@ -22,8 +22,8 @@ describe('UsersController', () => {
 
   const mockUser: Partial<User> = {
     id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    email: 'admin@nemea.com',
-    name: 'Admin Nemea',
+    email: 'admin@hefesto.com',
+    name: 'Admin Hefesto',
     pictureUrl: null,
     googleId: null,
     role: mockRole as User['role'],
@@ -71,7 +71,7 @@ describe('UsersController', () => {
 
   describe('POST /users', () => {
     it('should create a user with email and roleId', async () => {
-      const dto = { email: 'new@nemea.com', roleId: 'role-uuid-1' };
+      const dto = { email: 'new@hefesto.com', roleId: 'role-uuid-1' };
       const createdUser = {
         ...mockUser,
         ...dto,
@@ -90,7 +90,7 @@ describe('UsersController', () => {
     });
 
     it('should propagate ConflictException for duplicate email from service', async () => {
-      const dto = { email: 'admin@nemea.com', roleId: 'role-uuid-1' };
+      const dto = { email: 'admin@hefesto.com', roleId: 'role-uuid-1' };
       mockUsersService.create.mockRejectedValue(
         new ConflictException('Email ya registrado'),
       );

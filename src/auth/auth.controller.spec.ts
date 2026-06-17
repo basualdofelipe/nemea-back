@@ -16,17 +16,17 @@ describe('AuthController', () => {
     accessToken: 'mocked-jwt-token',
     user: {
       id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-      email: 'admin@nemea.com',
+      email: 'admin@hefesto.com',
       permissions: { ...NO_PERMISSIONS, canManageUsers: true },
-      name: 'Admin Nemea',
+      name: 'Admin Hefesto',
       pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
     },
   };
 
   const mockUser: Partial<User> = {
     id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    email: 'admin@nemea.com',
-    name: 'Admin Nemea',
+    email: 'admin@hefesto.com',
+    name: 'Admin Hefesto',
     pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
     googleId: 'google-sub-123',
     isActive: true,
@@ -93,7 +93,7 @@ describe('AuthController', () => {
     it('should return user profile for authenticated user', async () => {
       const jwtUser: JwtUser = {
         id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        email: 'admin@nemea.com',
+        email: 'admin@hefesto.com',
         permissions: { ...NO_PERMISSIONS, canManageUsers: true },
       };
       mockAuthService.getProfile.mockResolvedValue(mockUser);
@@ -109,7 +109,7 @@ describe('AuthController', () => {
     it('should throw UnauthorizedException when user not found in DB', async () => {
       const jwtUser: JwtUser = {
         id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
-        email: 'deleted@nemea.com',
+        email: 'deleted@hefesto.com',
         permissions: NO_PERMISSIONS,
       };
       mockAuthService.getProfile.mockResolvedValue(null);

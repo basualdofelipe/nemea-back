@@ -1,12 +1,12 @@
 # Architecture
 
-This document describes the internal design of `nemea-back`: the NestJS module graph, the full request lifecycle, the auth/permission model, the data model, the BOM-based cost engine, the Tiendanube pricing calculator, and the migration strategy. It focuses on **why** things are done the way they are, not just what exists.
+This document describes the internal design of `hefesto-back`: the NestJS module graph, the full request lifecycle, the auth/permission model, the data model, the BOM-based cost engine, the Tiendanube pricing calculator, and the migration strategy. It focuses on **why** things are done the way they are, not just what exists.
 
 ---
 
 ## System Overview
 
-`nemea-back` is a REST API for a leather-goods business. Its three core responsibilities are:
+`hefesto-back` is a REST API for a leather-goods business. Its three core responsibilities are:
 
 1. **Cost tracking** — maintain a Bill of Materials (BOM) for each product and compute the real cost from current supply prices at query time, with no denormalization.
 2. **Tiendanube pricing** — given a selling price (or a target profit), calculate the net margin after every Argentine e-commerce cost layer: gateway commission, installment financing, IVA debit/credit offset, IIBB retention, and platform transaction cost.
@@ -98,7 +98,7 @@ The JWT payload embeds `permissions` at sign time. If an admin demotes a user's 
 ### Authentication flow
 
 ```
-Frontend                            nemea-back
+Frontend                            hefesto-back
    │                                    │
    │─── POST /api/auth/google ─────────>│
    │    { idToken: "google-id-token" }  │

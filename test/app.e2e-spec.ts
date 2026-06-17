@@ -60,7 +60,7 @@ describe('AppController (e2e)', () => {
       expect(data).toEqual(
         expect.objectContaining({
           status: 'ok',
-          app: 'nemea-back',
+          app: 'hefesto-back',
           version: '0.1.0',
         }),
       );
@@ -106,7 +106,7 @@ describe('AppController (e2e)', () => {
     it('POST /api/users should return 401 without JWT', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/users')
-        .send({ email: 'test@nemea.com' })
+        .send({ email: 'test@hefesto.com' })
         .expect(401);
 
       expect(response.body).toHaveProperty('statusCode', 401);
