@@ -79,7 +79,7 @@ describe('PermissionsGuard', () => {
         .mockReturnValue(['can_manage_users']);
       const noPermsUser = {
         id: 'user-1',
-        email: 'user@nemea.com',
+        email: 'user@hefesto.com',
         permissions: { ...NO_PERMISSIONS },
       };
       const ctx = makeContext(noPermsUser);
@@ -93,7 +93,7 @@ describe('PermissionsGuard', () => {
         .mockReturnValue(['can_view_products', 'can_manage_users']);
       const partialUser = {
         id: 'user-2',
-        email: 'user@nemea.com',
+        email: 'user@hefesto.com',
         permissions: {
           ...NO_PERMISSIONS,
           canViewProducts: true,
@@ -113,7 +113,7 @@ describe('PermissionsGuard', () => {
         .mockReturnValue(['can_view_products']);
       const user = {
         id: 'user-3',
-        email: 'user@nemea.com',
+        email: 'user@hefesto.com',
         permissions: {
           ...NO_PERMISSIONS,
           canViewProducts: true,
@@ -136,7 +136,7 @@ describe('PermissionsGuard', () => {
         ]);
       const adminUser = {
         id: 'admin-1',
-        email: 'admin@nemea.com',
+        email: 'admin@hefesto.com',
         permissions: {
           ...NO_PERMISSIONS,
           canViewProducts: true,
@@ -160,7 +160,7 @@ describe('PermissionsGuard', () => {
 
       const userWithManage = {
         id: 'admin-2',
-        email: 'admin@nemea.com',
+        email: 'admin@hefesto.com',
         permissions: {
           ...NO_PERMISSIONS,
           canManageUsers: true,
@@ -171,7 +171,7 @@ describe('PermissionsGuard', () => {
 
       const userWithoutManage = {
         id: 'regular-1',
-        email: 'regular@nemea.com',
+        email: 'regular@hefesto.com',
         permissions: { ...NO_PERMISSIONS },
       };
       const ctxDeny = makeContext(userWithoutManage);

@@ -16,7 +16,7 @@ describe('AppController', () => {
     it('should return health status', () => {
       const result = appController.getHealth();
       expect(result.status).toBe('ok');
-      expect(result.app).toBe('nemea-back');
+      expect(result.app).toBe('hefesto-back');
       expect(result.version).toBe('0.1.0');
       expect(typeof result.uptime).toBe('number');
     });

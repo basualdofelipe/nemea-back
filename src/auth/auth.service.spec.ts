@@ -33,8 +33,8 @@ describe('AuthService', () => {
 
   const mockUser: Partial<User> = {
     id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    email: 'admin@nemea.com',
-    name: 'Admin Nemea',
+    email: 'admin@hefesto.com',
+    name: 'Admin Hefesto',
     pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
     googleId: 'google-sub-123',
     role: mockRole as User['role'],
@@ -83,8 +83,8 @@ describe('AuthService', () => {
     it('should return accessToken and user for a whitelisted email with valid token', async () => {
       // Mock the internal Google verification to return a valid payload
       const mockPayload = {
-        email: 'admin@nemea.com',
-        name: 'Admin Nemea',
+        email: 'admin@hefesto.com',
+        name: 'Admin Hefesto',
         picture: 'https://lh3.googleusercontent.com/photo.jpg',
         sub: 'google-sub-123',
       };
@@ -105,21 +105,21 @@ describe('AuthService', () => {
 
       expect(result.accessToken).toBe('mocked-jwt-token');
       expect(result.user.id).toBe('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
-      expect(result.user.email).toBe('admin@nemea.com');
+      expect(result.user.email).toBe('admin@hefesto.com');
       expect(result.user.permissions).toBeDefined();
       expect(result.user.permissions.canManageUsers).toBe(true);
-      expect(result.user.name).toBe('Admin Nemea');
+      expect(result.user.name).toBe('Admin Hefesto');
       expect(result.user.pictureUrl).toBe(
         'https://lh3.googleusercontent.com/photo.jpg',
       );
 
       expect(usersService.findActiveByEmail).toHaveBeenCalledWith(
-        'admin@nemea.com',
+        'admin@hefesto.com',
       );
       expect(usersService.updateGoogleProfile).toHaveBeenCalledWith(
         'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
         {
-          name: 'Admin Nemea',
+          name: 'Admin Hefesto',
           pictureUrl: 'https://lh3.googleusercontent.com/photo.jpg',
           googleId: 'google-sub-123',
         },
@@ -127,7 +127,7 @@ describe('AuthService', () => {
       expect(jwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
           sub: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-          email: 'admin@nemea.com',
+          email: 'admin@hefesto.com',
           permissions: expect.objectContaining({ canManageUsers: true }),
         }),
       );
@@ -303,7 +303,7 @@ describe('AuthService', () => {
       mockConfigService.get.mockReturnValue('true');
 
       await expect(
-        service.validateDemoLogin('admin@nemea.com'),
+        service.validateDemoLogin('admin@hefesto.com'),
       ).rejects.toThrow(UnauthorizedException);
       // The pinned demo account is never looked up for a foreign email.
       expect(mockUsersService.findActiveByEmail).not.toHaveBeenCalled();
